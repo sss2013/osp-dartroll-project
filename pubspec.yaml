@@ -1,4 +1,4 @@
-name: event_matcher
+name: cultureyo
 description: A regional event matching Flutter application.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
@@ -59,12 +59,8 @@ flutter:
 
   assets:
     - assets/images/
-    - assets/icons/
     - assets/data/
+    - assets/images/logos/Culture.png
+    - assets/images/icons/kakao_icon.png
+    - assets/images/icons/naver_icon.png
 
-  fonts:
-    - family: NotoSans
-      fonts:
-        - asset: assets/fonts/NotoSansKR-Regular.ttf
-        - asset: assets/fonts/NotoSansKR-Bold.ttf
-          weight: 700

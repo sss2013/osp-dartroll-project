@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
 
+  flutter_dotenv: ^5.1.0
   kakao_flutter_sdk: ^1.9.7+3 # 전체 추가
 
   # State management
@@ -65,4 +66,5 @@ flutter:
     - assets/images/logos/Culture.png
     - assets/images/icons/kakao_icon.png
     - assets/images/icons/naver_icon.png
+    - .env
 

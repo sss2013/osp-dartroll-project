@@ -64,3 +64,5 @@ coverage/
 # Platform specific
 /android/key.properties
 /ios/Runner/Info.plist.backup
+
+.env

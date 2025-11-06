@@ -1,12 +1,21 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cultureyo/src/features/authentication/presentation/pages/login_page.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
+
+Future<void> main() async {
+  await dotenv.load(fileName: '.env');
+
+  final kakaoKey = dotenv.env['KAKAO_NATIVE_APP_KEY'];
+
   KakaoSdk.init(
-    nativeAppKey: 'd8a04653cce480e97394d868eb83502a',
+    nativeAppKey : kakaoKey
   );
-
+  if (kDebugMode) {
+    print(kakaoKey);
+  }
   runApp(const MyApp());
 }
 

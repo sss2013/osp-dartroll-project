@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cultureyo/src/features/authentication/presentation/pages/login_page.dart';
+import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
 
 void main() {
+  KakaoSdk.init(
+    nativeAppKey: 'd8a04653cce480e97394d868eb83502a',
+  );
+
   runApp(const MyApp());
 }
 

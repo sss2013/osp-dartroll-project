@@ -240,9 +240,11 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _pages = [
     HomePage(),
     ChatPage(),
-    SettingsPage(),
+    LocationPage(),
     ProfilePage(),
   ];
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -619,7 +621,7 @@ class SettingsPage extends StatelessWidget {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
-          "위치",
+          "설정",
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,
@@ -653,6 +655,34 @@ class SettingsPage extends StatelessWidget {
     );
   }
 }
+
+class LocationPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text(
+          "위치",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: Colors.white,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.lightBlue,
+      ),
+      body: Center(
+        child: Text(
+          "위치 페이지 (추후 내용 추가)",
+          style: TextStyle(color: Colors.grey, fontSize: 16),
+        ),
+      ),
+    );
+  }
+}
+
 
 class ProfilePage extends StatelessWidget {
   @override

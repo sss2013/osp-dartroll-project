@@ -14,10 +14,13 @@ if (envFile.exists()) {
     props.load(FileInputStream(envFile))
 }
 val kakaoKey: String = props.getProperty("KAKAO_NATIVE_APP_KEY") ?: ""
+val naverClientId: String = props.getProperty("CLIENT_ID") ?: ""
+val naverClientName: String = props.getProperty("CLIENT_NAME") ?: ""
 
 
 android {
     namespace = "S25osp.kr.ac.kumoh.dartroll_front"
+
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -37,7 +40,11 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
 
         resValue("string", "kakao_native_app_key", kakaoKey)
+        resValue("string", "naver_client_id", naverClientId)
+        resValue("string", "naver_client_name", naverClientName)
         manifestPlaceholders["KAKAO_NATIVE_APP_KEY"] = kakaoKey
+        manifestPlaceholders["NAVER_CLIENT_ID"] = naverClientId
+        manifestPlaceholders["NAVER_CLIENT_NAME"] = naverClientName
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

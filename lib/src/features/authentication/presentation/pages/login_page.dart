@@ -1,4 +1,7 @@
+import 'package:cultureyo/src/features/authentication/domain/usecases/auth_manager.dart';
+import 'package:cultureyo/src/features/authentication/presentation/pages/main_test_page.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -8,9 +11,10 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-
   @override
   Widget build(BuildContext context) {
+    final authManager = context.read<AuthManager>();
+
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
@@ -39,7 +43,18 @@ class _LoginPageState extends State<LoginPage> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () async {
+                    final success =
+                        await authManager.kakaoService.loginWithKakaoTalk();
+                    if (!context.mounted) return;
+                    if (success) {
+                      await authManager.checkAuth();
+                      Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const MainTestPage()));
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFEE500),
                     shape: RoundedRectangleBorder(
@@ -77,7 +92,18 @@ class _LoginPageState extends State<LoginPage> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () async {
+                    final success =
+                        await authManager.naverService.naverLogin();
+                    if (!context.mounted) return;
+                    if (success) {
+                      await authManager.checkAuth();
+                      Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const MainTestPage()));
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF03C75A),
                     shape: RoundedRectangleBorder(

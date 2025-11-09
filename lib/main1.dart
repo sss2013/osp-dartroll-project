@@ -228,7 +228,7 @@ class InterestSelectPage extends StatelessWidget {
 }
 
 
-/// 메인 화면 (네비게이션 포함)
+/// 메인 화면
 class MainScreen extends StatefulWidget {
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -247,10 +247,9 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true, // 유리 효과 위해 필요
+      extendBody: true, // 유리 효과
       body: _pages[_selectedIndex],
 
-      // GlassMorphism iOS 스타일 네비게이션바
       bottomNavigationBar: ClipRRect(
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(25),
@@ -345,7 +344,7 @@ class _HomePageState extends State<HomePage> {
               children: [
                 const SizedBox(height: 15),
 
-                // ✅ 지역 선택 버튼 → 새로운 화면으로 이동
+                // 지역 선택 버튼 → 새로운 화면으로 이동
                 ElevatedButton(
                   onPressed: () {
                     Navigator.push(
@@ -364,7 +363,6 @@ class _HomePageState extends State<HomePage> {
 
                 const SizedBox(height: 20),
 
-                // ✅ 기존 광고/이벤트 박스 유지
                 _eventBox("2025 서울 불꽃 축제", "여의도 한강공원", "2025.10.08"),
                 const SizedBox(height: 10),
                 _eventBox("겨울 빛 축제", "강원도 홍천 수목원", "2025.12.02"),
@@ -564,9 +562,9 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
 
 class ChatPage extends StatelessWidget {
   final List<Map<String, String>> chatList = [ {
-    "name": "김민수", "message": "오늘 저녁에 뭐해?", "time": "오후 6:20"},
-    {"name": "이지은", "message": "사진 잘 봤어요 😊", "time": "오후 5:47"},
-    {"name": "박현우", "message": "내일 회의 가능?", "time": "오전 9:30"},
+    "name": "이름1", "message": "오늘 저녁에 뭐해?", "time": "오후 6:20"},
+    {"name": "이름2", "message": "사진 잘 봤어요", "time": "오후 5:47"},
+    {"name": "이름3", "message": "내일 회의 가능?", "time": "오전 9:30"},
   ];
 
   @override Widget build(BuildContext context) {

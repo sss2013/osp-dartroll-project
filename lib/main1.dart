@@ -569,8 +569,18 @@ class ChatPage extends StatelessWidget {
 
   @override Widget build(BuildContext context) {
     return Scaffold(backgroundColor: Colors.white,
-      appBar: AppBar(title: Text("채팅"),
-        centerTitle: true, backgroundColor: Colors.lightBlue,),
+      appBar: AppBar(
+        title: const Text(
+          "채팅",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: Colors.white,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.lightBlue,
+      ),
       body: ListView.builder(
         itemCount: chatList.length, itemBuilder: (context, index) {
         final chat = chatList[index];
@@ -608,7 +618,14 @@ class SettingsPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text("설정"),
+        title: const Text(
+          "위치",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: Colors.white,
+          ),
+        ),
         centerTitle: true,
         backgroundColor: Colors.lightBlue,
       ),
@@ -643,7 +660,14 @@ class ProfilePage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text("내 정보"),
+        title: const Text(
+          "내 정보",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: Colors.white,
+          ),
+        ),
         centerTitle: true,
         backgroundColor: Colors.lightBlue,
       ),

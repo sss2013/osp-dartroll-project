@@ -6,7 +6,7 @@ your_app_name/
 │   │   ├── core/                    # 앱 전체에서 사용하는 핵심 기능
 │   │   │   ├── constants/           # 상수 값들
 │   │   │   ├── errors/              # 커스텀 에러 클래스
-│   │   │   ├── network/             # API 클라이언트, 인터셉터
+│   │   │   ├── network/             # API 클라이언트, 인터셉터 
 │   │   │   ├── utils/               # 유틸리티 함수들
 │   │   │   └── extensions/          # Dart 확장 메서드
 │   │   │

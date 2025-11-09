@@ -4,16 +4,19 @@ import 'package:cultureyo/src/features/authentication/domain/usecases/naver_logi
 import 'package:cultureyo/src/features/authentication/presentation/pages/splash_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_naver_login/flutter_naver_login.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
   await dotenv.load(fileName: '.env');
 
   final kakaoKey = dotenv.env['KAKAO_NATIVE_APP_KEY'];
+
   KakaoSdk.init(nativeAppKey: kakaoKey);
   if (kDebugMode) {
     print(kakaoKey);

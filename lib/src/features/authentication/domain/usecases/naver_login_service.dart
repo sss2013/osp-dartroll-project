@@ -6,10 +6,16 @@ import 'package:flutter_naver_login/interface/types/naver_token.dart';
 
 class NaverLoginService {
   Future<bool> naverLogin() async {
+
     try {
       final NaverLoginResult result = await FlutterNaverLogin.logIn();
       if (result.status == NaverLoginStatus.loggedIn) {
         return true;
+      } else{
+        if(kDebugMode){
+          print('로그인 결과 : ${result.status}');
+          print('액세스 토큰  : ${result.accessToken}');
+        }
       }
     } catch (error) {
       if(kDebugMode){

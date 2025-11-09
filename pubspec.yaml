@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
 
+  http: ^1.2.1 # 최신 버전으로 명시
   flutter_dotenv: ^5.1.0
   kakao_flutter_sdk: ^1.9.7+3 # 전체 추가
   flutter_naver_login: ^2.1.1  # (현재 pub.dev 최신 안정 버전)

@@ -30,7 +30,7 @@ class _SplashPageState extends State<SplashPage> {
           break;
         case AuthStatus.none:
           Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (_) => const LoginPage()));
+              context, MaterialPageRoute(builder: (_) =>  const LoginPage()));
           break;
       }
     });

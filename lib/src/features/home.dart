@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'dart:ui';
 
-void main() => runApp(MyApp());
+void main() => runApp(const Home());
 
-class MyApp extends StatelessWidget {
+class Home extends StatelessWidget {
+  const Home({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -20,162 +22,162 @@ class MyApp extends StatelessWidget {
           fillColor: Colors.white,
         ),
       ),
-      home: LogIn(),
+      home: InterestSelectPage()
     );
   }
 }
+//
+// class LogIn extends StatefulWidget {
+//   @override
+//   State<LogIn> createState() => _LogInState();
+// }
+//
+// class _LogInState extends State<LogIn> {
+//   final _formKey = GlobalKey<FormState>();
+//   final _emailController = TextEditingController();
+//   final _pwController = TextEditingController();
+//
+//   void _login() {
+//     if (_formKey.currentState!.validate()) {
+//       String email = _emailController.text.trim();
+//       String pw = _pwController.text.trim();
+//
+//       if (email == "test@test.com" && pw == "1234") {
+//         Navigator.pushReplacement(
+//           context,
+//           MaterialPageRoute(builder: (_) => MainScreen()),
+//         );
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(content: Text("로그인 성공! 🎉")),
+//         );
+//       } else {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(content: Text("이메일 또는 비밀번호가 잘못되었습니다.")),
+//         );
+//       }
+//     }
+//   }
 
-class LogIn extends StatefulWidget {
-  @override
-  State<LogIn> createState() => _LogInState();
-}
-
-class _LogInState extends State<LogIn> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _pwController = TextEditingController();
-
-  void _login() {
-    if (_formKey.currentState!.validate()) {
-      String email = _emailController.text.trim();
-      String pw = _pwController.text.trim();
-
-      if (email == "test@test.com" && pw == "1234") {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => MainScreen()),
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("로그인 성공! 🎉")),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("이메일 또는 비밀번호가 잘못되었습니다.")),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.lightBlue[50],
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Container(
-              height: 250,
-              decoration: BoxDecoration(
-                color: Colors.lightBlue,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(80),
-                ),
-              ),
-              child: Center(
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  width: 120,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.all(30.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    SizedBox(height: 20),
-                    Text(
-                      "Welcome Back!",
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.lightBlue,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Text(
-                      "로그인해서 계속 이용하세요",
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    SizedBox(height: 40),
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: InputDecoration(
-                        labelText: '이메일',
-                        prefixIcon: Icon(Icons.email, color: Colors.lightBlue[50]),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return '이메일을 입력하세요';
-                        }
-                        if (!value.contains('@')) {
-                          return '유효한 이메일을 입력하세요';
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 20),
-                    TextFormField(
-                      controller: _pwController,
-                      decoration: InputDecoration(
-                        labelText: '비밀번호',
-                        prefixIcon: Icon(Icons.lock, color: Colors.lightBlue[50]),
-                      ),
-                      obscureText: true,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return '비밀번호를 입력하세요';
-                        }
-                        if (value.length < 4) {
-                          return '비밀번호는 4자리 이상이어야 합니다';
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 40),
-                    ElevatedButton(
-                      onPressed: _login,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.lightBlue,
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 100.0, vertical: 15.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                        ),
-                        elevation: 6,
-                      ),
-                      child: Text(
-                        "로그인",
-                        style: TextStyle(fontSize: 18.0, color: Colors.white),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    TextButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("회원가입 기능은 준비 중입니다 🙂")),
-                        );
-                      },
-                      child: Text(
-                        "계정이 없으신가요? 회원가입",
-                        style: TextStyle(color: Colors.lightBlue[800]),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: Colors.lightBlue[50],
+//       body: SingleChildScrollView(
+//         child: Column(
+//           children: [
+//             Container(
+//               height: 250,
+//               decoration: BoxDecoration(
+//                 color: Colors.lightBlue,
+//                 borderRadius: BorderRadius.only(
+//                   bottomLeft: Radius.circular(80),
+//                 ),
+//               ),
+//               child: Center(
+//                 child: Image.asset(
+//                   'assets/images/logo.png',
+//                   width: 120,
+//                   color: Colors.white,
+//                 ),
+//               ),
+//             ),
+//             Padding(
+//               padding: EdgeInsets.all(30.0),
+//               child: Form(
+//                 key: _formKey,
+//                 child: Column(
+//                   children: [
+//                     SizedBox(height: 20),
+//                     Text(
+//                       "Welcome Back!",
+//                       style: TextStyle(
+//                         fontSize: 28,
+//                         fontWeight: FontWeight.bold,
+//                         color: Colors.lightBlue,
+//                       ),
+//                     ),
+//                     SizedBox(height: 10),
+//                     Text(
+//                       "로그인해서 계속 이용하세요",
+//                       style: TextStyle(
+//                         fontSize: 15,
+//                         color: Colors.grey[700],
+//                       ),
+//                     ),
+//                     SizedBox(height: 40),
+//                     TextFormField(
+//                       controller: _emailController,
+//                       decoration: InputDecoration(
+//                         labelText: '이메일',
+//                         prefixIcon: Icon(Icons.email, color: Colors.lightBlue[50]),
+//                       ),
+//                       validator: (value) {
+//                         if (value == null || value.isEmpty) {
+//                           return '이메일을 입력하세요';
+//                         }
+//                         if (!value.contains('@')) {
+//                           return '유효한 이메일을 입력하세요';
+//                         }
+//                         return null;
+//                       },
+//                     ),
+//                     SizedBox(height: 20),
+//                     TextFormField(
+//                       controller: _pwController,
+//                       decoration: InputDecoration(
+//                         labelText: '비밀번호',
+//                         prefixIcon: Icon(Icons.lock, color: Colors.lightBlue[50]),
+//                       ),
+//                       obscureText: true,
+//                       validator: (value) {
+//                         if (value == null || value.isEmpty) {
+//                           return '비밀번호를 입력하세요';
+//                         }
+//                         if (value.length < 4) {
+//                           return '비밀번호는 4자리 이상이어야 합니다';
+//                         }
+//                         return null;
+//                       },
+//                     ),
+//                     SizedBox(height: 40),
+//                     ElevatedButton(
+//                       onPressed: _login,
+//                       style: ElevatedButton.styleFrom(
+//                         backgroundColor: Colors.lightBlue,
+//                         padding: EdgeInsets.symmetric(
+//                             horizontal: 100.0, vertical: 15.0),
+//                         shape: RoundedRectangleBorder(
+//                           borderRadius: BorderRadius.circular(30.0),
+//                         ),
+//                         elevation: 6,
+//                       ),
+//                       child: Text(
+//                         "로그인",
+//                         style: TextStyle(fontSize: 18.0, color: Colors.white),
+//                       ),
+//                     ),
+//                     SizedBox(height: 20),
+//                     TextButton(
+//                       onPressed: () {
+//                         ScaffoldMessenger.of(context).showSnackBar(
+//                           SnackBar(content: Text("회원가입 기능은 준비 중입니다 🙂")),
+//                         );
+//                       },
+//                       child: Text(
+//                         "계정이 없으신가요? 회원가입",
+//                         style: TextStyle(color: Colors.lightBlue[800]),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
 
 
 class InterestSelectPage extends StatelessWidget {
@@ -641,13 +643,14 @@ class SettingsPage extends StatelessWidget {
             leading: Icon(item['icon'], color: Colors.lightBlue),
             title: Text(item['title']),
             trailing: Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {
-              if (item['title'] == "로그아웃") {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => LogIn()),
-                );
-              }
+            onTap: ()
+            {
+              // if (item['title'] == "로그아웃") {
+              //   Navigator.pushReplacement(
+              //     context,
+              //     MaterialPageRoute(builder: (_) => LogIn()),
+              //   );
+              // }
             },
           );
         },

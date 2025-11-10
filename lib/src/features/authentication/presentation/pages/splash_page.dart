@@ -1,5 +1,5 @@
 import 'package:cultureyo/src/features/authentication/domain/usecases/auth_manager.dart';
-import 'package:cultureyo/src/features/authentication/presentation/pages/main_test_page.dart';
+import 'package:cultureyo/src/features/home.dart';
 import 'package:flutter/material.dart';
 import 'login_page.dart';
 import 'package:provider/provider.dart';
@@ -26,7 +26,7 @@ class _SplashPageState extends State<SplashPage> {
         case AuthStatus.kakao:
         case AuthStatus.naver:
           Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (_) => const MainTestPage()));
+              context, MaterialPageRoute(builder: (_) => const Home()));
           break;
         case AuthStatus.none:
           Navigator.pushReplacement(

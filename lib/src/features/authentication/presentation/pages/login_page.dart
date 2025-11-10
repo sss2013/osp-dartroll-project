@@ -1,5 +1,5 @@
 import 'package:cultureyo/src/features/authentication/domain/usecases/auth_manager.dart';
-import 'package:cultureyo/src/features/authentication/presentation/pages/main_test_page.dart';
+import 'package:cultureyo/src/features/authentication/presentation/pages/user_info.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -52,7 +52,7 @@ class _LoginPageState extends State<LoginPage> {
                       Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => const MainTestPage()));
+                              builder: (_) => NameInputPage()));
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -101,7 +101,7 @@ class _LoginPageState extends State<LoginPage> {
                       Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => const MainTestPage()));
+                              builder: (_) => NameInputPage()));
                     }
                   },
                   style: ElevatedButton.styleFrom(

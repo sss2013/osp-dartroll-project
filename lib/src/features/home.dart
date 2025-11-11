@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'dart:ui';
-
-void main() => runApp(const Home());
+import 'package:cultureyo/src/features/community/presentation/pages/board_page.dart';
 
 class Home extends StatelessWidget {
   const Home({super.key});
@@ -22,164 +21,12 @@ class Home extends StatelessWidget {
           fillColor: Colors.white,
         ),
       ),
-      home: InterestSelectPage()
+      home: InterestSelectPage(),
     );
   }
 }
-//
-// class LogIn extends StatefulWidget {
-//   @override
-//   State<LogIn> createState() => _LogInState();
-// }
-//
-// class _LogInState extends State<LogIn> {
-//   final _formKey = GlobalKey<FormState>();
-//   final _emailController = TextEditingController();
-//   final _pwController = TextEditingController();
-//
-//   void _login() {
-//     if (_formKey.currentState!.validate()) {
-//       String email = _emailController.text.trim();
-//       String pw = _pwController.text.trim();
-//
-//       if (email == "test@test.com" && pw == "1234") {
-//         Navigator.pushReplacement(
-//           context,
-//           MaterialPageRoute(builder: (_) => MainScreen()),
-//         );
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           SnackBar(content: Text("로그인 성공! 🎉")),
-//         );
-//       } else {
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           SnackBar(content: Text("이메일 또는 비밀번호가 잘못되었습니다.")),
-//         );
-//       }
-//     }
-//   }
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: Colors.lightBlue[50],
-//       body: SingleChildScrollView(
-//         child: Column(
-//           children: [
-//             Container(
-//               height: 250,
-//               decoration: BoxDecoration(
-//                 color: Colors.lightBlue,
-//                 borderRadius: BorderRadius.only(
-//                   bottomLeft: Radius.circular(80),
-//                 ),
-//               ),
-//               child: Center(
-//                 child: Image.asset(
-//                   'assets/images/logo.png',
-//                   width: 120,
-//                   color: Colors.white,
-//                 ),
-//               ),
-//             ),
-//             Padding(
-//               padding: EdgeInsets.all(30.0),
-//               child: Form(
-//                 key: _formKey,
-//                 child: Column(
-//                   children: [
-//                     SizedBox(height: 20),
-//                     Text(
-//                       "Welcome Back!",
-//                       style: TextStyle(
-//                         fontSize: 28,
-//                         fontWeight: FontWeight.bold,
-//                         color: Colors.lightBlue,
-//                       ),
-//                     ),
-//                     SizedBox(height: 10),
-//                     Text(
-//                       "로그인해서 계속 이용하세요",
-//                       style: TextStyle(
-//                         fontSize: 15,
-//                         color: Colors.grey[700],
-//                       ),
-//                     ),
-//                     SizedBox(height: 40),
-//                     TextFormField(
-//                       controller: _emailController,
-//                       decoration: InputDecoration(
-//                         labelText: '이메일',
-//                         prefixIcon: Icon(Icons.email, color: Colors.lightBlue[50]),
-//                       ),
-//                       validator: (value) {
-//                         if (value == null || value.isEmpty) {
-//                           return '이메일을 입력하세요';
-//                         }
-//                         if (!value.contains('@')) {
-//                           return '유효한 이메일을 입력하세요';
-//                         }
-//                         return null;
-//                       },
-//                     ),
-//                     SizedBox(height: 20),
-//                     TextFormField(
-//                       controller: _pwController,
-//                       decoration: InputDecoration(
-//                         labelText: '비밀번호',
-//                         prefixIcon: Icon(Icons.lock, color: Colors.lightBlue[50]),
-//                       ),
-//                       obscureText: true,
-//                       validator: (value) {
-//                         if (value == null || value.isEmpty) {
-//                           return '비밀번호를 입력하세요';
-//                         }
-//                         if (value.length < 4) {
-//                           return '비밀번호는 4자리 이상이어야 합니다';
-//                         }
-//                         return null;
-//                       },
-//                     ),
-//                     SizedBox(height: 40),
-//                     ElevatedButton(
-//                       onPressed: _login,
-//                       style: ElevatedButton.styleFrom(
-//                         backgroundColor: Colors.lightBlue,
-//                         padding: EdgeInsets.symmetric(
-//                             horizontal: 100.0, vertical: 15.0),
-//                         shape: RoundedRectangleBorder(
-//                           borderRadius: BorderRadius.circular(30.0),
-//                         ),
-//                         elevation: 6,
-//                       ),
-//                       child: Text(
-//                         "로그인",
-//                         style: TextStyle(fontSize: 18.0, color: Colors.white),
-//                       ),
-//                     ),
-//                     SizedBox(height: 20),
-//                     TextButton(
-//                       onPressed: () {
-//                         ScaffoldMessenger.of(context).showSnackBar(
-//                           SnackBar(content: Text("회원가입 기능은 준비 중입니다 🙂")),
-//                         );
-//                       },
-//                       child: Text(
-//                         "계정이 없으신가요? 회원가입",
-//                         style: TextStyle(color: Colors.lightBlue[800]),
-//                       ),
-//                     ),
-//                   ],
-//                 ),
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-
+/// 관심사 선택 페이지
 class InterestSelectPage extends StatelessWidget {
   final List<String> interests = [
     "음악",
@@ -214,7 +61,8 @@ class InterestSelectPage extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
               ),
               icon: const Icon(Icons.star, color: Colors.white),
               label: Text(
@@ -229,7 +77,6 @@ class InterestSelectPage extends StatelessWidget {
   }
 }
 
-
 /// 메인 화면
 class MainScreen extends StatefulWidget {
   @override
@@ -238,36 +85,32 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-
   final List<Widget> _pages = [
     HomePage(),
     ChatPage(),
-    LocationPage(),
+    BoardPage(),  // 기존 push 대신 여기 포함
     ProfilePage(),
   ];
-
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true, // 유리 효과
-      body: _pages[_selectedIndex],
-
+      extendBody: true,
+      body: _pages[_selectedIndex], // 선택된 탭 화면 표시
       bottomNavigationBar: ClipRRect(
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(25),
           topRight: Radius.circular(25),
         ),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20), // 흐림 효과
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.6),
               border: Border(
                 top: BorderSide(color: Colors.white.withOpacity(0.3), width: 1),
               ),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
                   color: Colors.black12,
                   blurRadius: 10,
@@ -282,7 +125,9 @@ class _MainScreenState extends State<MainScreen> {
               unselectedItemColor: Colors.grey[600],
               currentIndex: _selectedIndex,
               elevation: 0,
-              onTap: (index) => setState(() => _selectedIndex = index),
+              onTap: (index) {
+                setState(() => _selectedIndex = index); // 그냥 인덱스 변경
+              },
               items: const [
                 BottomNavigationBarItem(
                   icon: Icon(Icons.home_outlined),
@@ -295,9 +140,9 @@ class _MainScreenState extends State<MainScreen> {
                   label: '대화',
                 ),
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.location_on_outlined),
-                  activeIcon: Icon(Icons.location_on),
-                  label: '위치',
+                  icon: Icon(Icons.view_list_outlined),
+                  activeIcon: Icon(Icons.view_list),
+                  label: '게시판',
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.person_outline),
@@ -313,7 +158,8 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-/// 예시용 페이지
+
+/// 예시용 홈 페이지
 class HomePage extends StatefulWidget {
   @override
   _HomePageState createState() => _HomePageState();
@@ -332,13 +178,13 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text(
           "컬쳐요",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
+          style: TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
         ),
         centerTitle: true,
         backgroundColor: Colors.lightBlue,
         elevation: 0,
       ),
-
       body: SingleChildScrollView(
         child: Center(
           child: ConstrainedBox(
@@ -347,8 +193,6 @@ class _HomePageState extends State<HomePage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 15),
-
-                // 지역 선택 버튼 → 새로운 화면으로 이동
                 ElevatedButton(
                   onPressed: () {
                     Navigator.push(
@@ -359,20 +203,23 @@ class _HomePageState extends State<HomePage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.lightBlue,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text("지역 선택",
-                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    "지역 선택",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold),
+                  ),
                 ),
-
                 const SizedBox(height: 20),
-
                 _eventBox("2025 서울 불꽃 축제", "여의도 한강공원", "2025.10.08"),
                 const SizedBox(height: 10),
                 _eventBox("겨울 빛 축제", "강원도 홍천 수목원", "2025.12.02"),
                 const SizedBox(height: 10),
                 _eventBox("전국 푸드 페스티벌", "부산 해운대 광장", "2025.11.21"),
-
                 const SizedBox(height: 40),
               ],
             ),
@@ -390,7 +237,8 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            Text(title,
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Text(location, style: const TextStyle(color: Colors.black54)),
             const SizedBox(height: 4),
@@ -402,6 +250,7 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+/// 지역 선택 페이지
 class RegionSelectPage extends StatefulWidget {
   @override
   _RegionSelectPageState createState() => _RegionSelectPageState();
@@ -410,7 +259,6 @@ class RegionSelectPage extends StatefulWidget {
 class _RegionSelectPageState extends State<RegionSelectPage> {
   String? selectedRegion;
   String? selectedInterest;
-
   final List<String> regions = ["서울", "부산", "대구", "광주", "대전", "기타"];
   final List<String> interests = ["공연", "전시", "축제", "콘서트", "연극", "체험"];
 
@@ -427,10 +275,10 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
         centerTitle: true,
         elevation: 0,
       ),
-
       body: SingleChildScrollView(
         child: Center(
           child: ConstrainedBox(
@@ -439,7 +287,6 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 20),
-
                 // 지역 선택 카드
                 _sectionCard(
                   title: "지역 선택",
@@ -456,7 +303,8 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
                         backgroundColor: Colors.grey[200],
                         labelStyle: TextStyle(
                           color: isSelected ? Colors.lightBlue[900] : Colors.black87,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.normal,
                         ),
                         onSelected: (_) {
                           setState(() {
@@ -468,9 +316,7 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
                     }).toList(),
                   ),
                 ),
-
                 const SizedBox(height: 18),
-
                 // 관심사 선택 카드 (지역 선택했을 때만 표시)
                 if (selectedRegion != null)
                   _sectionCard(
@@ -487,7 +333,8 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
                           selectedColor: Colors.lightBlueAccent[100],
                           backgroundColor: Colors.grey[200],
                           labelStyle: TextStyle(
-                            color: isSelected ? Colors.lightBlue[900] : Colors.black87,
+                            color:
+                            isSelected ? Colors.lightBlue[900] : Colors.black87,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                           ),
                           onSelected: (_) {
@@ -499,12 +346,9 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
                       }).toList(),
                     ),
                   ),
-
                 const SizedBox(height: 18),
-
                 // 결과 카드 (지역 + 관심사 선택했을 때만 표시)
                 if (selectedInterest != null) _resultCard(),
-
                 const SizedBox(height: 40),
               ],
             ),
@@ -523,7 +367,8 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(title,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 14),
             child,
           ],
@@ -542,7 +387,8 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text("${selectedRegion!}의 ${selectedInterest!} 추천 행사",
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                style:
+                const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             const Divider(),
             const ListTile(
@@ -562,17 +408,18 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
   }
 }
 
-
-
+/// 채팅 페이지
 class ChatPage extends StatelessWidget {
-  final List<Map<String, String>> chatList = [ {
-    "name": "이름1", "message": "오늘 저녁에 뭐해?", "time": "오후 6:20"},
+  final List<Map<String, String>> chatList = [
+    {"name": "이름1", "message": "오늘 저녁에 뭐해?", "time": "오후 6:20"},
     {"name": "이름2", "message": "사진 잘 봤어요", "time": "오후 5:47"},
     {"name": "이름3", "message": "내일 회의 가능?", "time": "오전 9:30"},
   ];
 
-  @override Widget build(BuildContext context) {
-    return Scaffold(backgroundColor: Colors.white,
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
           "채팅",
@@ -586,29 +433,32 @@ class ChatPage extends StatelessWidget {
         backgroundColor: Colors.lightBlue,
       ),
       body: ListView.builder(
-        itemCount: chatList.length, itemBuilder: (context, index) {
-        final chat = chatList[index];
-        return ListTile(
-          leading: CircleAvatar(backgroundColor: Colors.lightBlue,
-            child: Text(
-              chat['name']![0], style: TextStyle(color: Colors.white),),),
-          title: Text(chat['name']!),
-          subtitle: Text(chat['message']!),
-          trailing: Text(
-            chat['time']!, style: TextStyle(color: Colors.grey[600],
-              fontSize: 12),),
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("${chat['name']}님과의 채팅방으로 이동")),
-            );
-          },
-        );
-      },
+        itemCount: chatList.length,
+        itemBuilder: (context, index) {
+          final chat = chatList[index];
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.lightBlue,
+              child: Text(chat['name']![0],
+                  style: const TextStyle(color: Colors.white)),
+            ),
+            title: Text(chat['name']!),
+            subtitle: Text(chat['message']!),
+            trailing: Text(chat['time']!,
+                style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("${chat['name']}님과의 채팅방으로 이동")),
+              );
+            },
+          );
+        },
       ),
     );
   }
 }
 
+/// 설정 페이지
 class SettingsPage extends StatelessWidget {
   final List<Map<String, dynamic>> settings = [
     {"icon": Icons.notifications, "title": "알림 설정"},
@@ -634,24 +484,16 @@ class SettingsPage extends StatelessWidget {
         backgroundColor: Colors.lightBlue,
       ),
       body: ListView.separated(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         itemCount: settings.length,
-        separatorBuilder: (_, __) => Divider(),
+        separatorBuilder: (_, __) => const Divider(),
         itemBuilder: (context, index) {
           final item = settings[index];
           return ListTile(
             leading: Icon(item['icon'], color: Colors.lightBlue),
             title: Text(item['title']),
-            trailing: Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: ()
-            {
-              // if (item['title'] == "로그아웃") {
-              //   Navigator.pushReplacement(
-              //     context,
-              //     MaterialPageRoute(builder: (_) => LogIn()),
-              //   );
-              // }
-            },
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {},
           );
         },
       ),
@@ -659,6 +501,7 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
+/// 위치 페이지
 class LocationPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -676,7 +519,7 @@ class LocationPage extends StatelessWidget {
         centerTitle: true,
         backgroundColor: Colors.lightBlue,
       ),
-      body: Center(
+      body: const Center(
         child: Text(
           "위치 페이지 (추후 내용 추가)",
           style: TextStyle(color: Colors.grey, fontSize: 16),
@@ -686,7 +529,7 @@ class LocationPage extends StatelessWidget {
   }
 }
 
-
+/// 내 정보 페이지
 class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -708,27 +551,27 @@ class ProfilePage extends StatelessWidget {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            CircleAvatar(
+            const CircleAvatar(
               radius: 50,
               backgroundColor: Colors.lightBlue,
               child: Icon(Icons.person, size: 60, color: Colors.white),
             ),
-            SizedBox(height: 15),
-            Text(
+            const SizedBox(height: 15),
+            const Text(
               "홍길동",
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             Text("test@test.com", style: TextStyle(color: Colors.grey[700])),
-            SizedBox(height: 30),
+            const SizedBox(height: 30),
             Card(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
               elevation: 4,
               child: ListTile(
-                leading: Icon(Icons.settings, color: Colors.lightBlue),
-                title: Text("설정으로 이동"),
-                trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                leading: const Icon(Icons.settings, color: Colors.lightBlue),
+                title: const Text("설정으로 이동"),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
                   Navigator.push(
                     context,

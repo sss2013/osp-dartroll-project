@@ -1,8 +1,8 @@
 import 'package:cultureyo/src/features/community/data/post_model.dart';
 import 'package:cultureyo/src/features/community/dummy_posts.dart';
 import 'package:flutter/material.dart';
-
 import 'post_detail_page.dart';
+import '../../../home.dart';
 
 class BoardPage extends StatefulWidget {
   const BoardPage({Key? key}) : super(key: key);
@@ -167,12 +167,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.lightBlue,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
         title: const Text(
           '게시판',
           style: TextStyle(

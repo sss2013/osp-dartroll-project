@@ -177,7 +177,6 @@ class _LogInState extends State<LogIn> {
   }
 }
 
-
 class InterestSelectPage extends StatelessWidget {
   final List<String> interests = [
     "음악",
@@ -227,7 +226,6 @@ class InterestSelectPage extends StatelessWidget {
   }
 }
 
-
 /// 메인 화면
 class MainScreen extends StatefulWidget {
   @override
@@ -243,8 +241,6 @@ class _MainScreenState extends State<MainScreen> {
     LocationPage(),
     ProfilePage(),
   ];
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -290,12 +286,12 @@ class _MainScreenState extends State<MainScreen> {
                 BottomNavigationBarItem(
                   icon: Icon(Icons.chat_bubble_outline),
                   activeIcon: Icon(Icons.chat_bubble),
-                  label: '대화',
+                  label: '게시판',
                 ),
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.location_on_outlined),
-                  activeIcon: Icon(Icons.location_on),
-                  label: '위치',
+                  icon: Icon(Icons.chat_bubble_outline),
+                  activeIcon: Icon(Icons.chat_bubble),
+                  label: '채팅',
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.person_outline),
@@ -543,15 +539,48 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             const Divider(),
-            const ListTile(
-              leading: Icon(Icons.event_available, color: Colors.lightBlue),
-              title: Text("2025 금오문화축제"),
-              subtitle: Text("11월 15일 - 금오공대 대운동장"),
+            // ✅ 첫 번째 행사
+            ListTile(
+              leading: const Icon(Icons.event_available, color: Colors.lightBlue),
+              title: const Text("2025 금오문화축제"),
+              subtitle: const Text("11월 15일 - 금오공대 대운동장"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => EventDetailPage(
+                      title: "2025 금오문화축제",
+                      location: "금오공대 대운동장",
+                      date: "2025년 11월 15일",
+                      time: "오후 2시 ~ 9시",
+                      description:
+                      "금오공과대학교에서 열리는 대규모 문화축제입니다. 공연, 푸드트럭, 불꽃놀이 등 다채로운 프로그램이 진행됩니다.",
+                    ),
+                  ),
+                );
+              },
             ),
-            const ListTile(
-              leading: Icon(Icons.music_note, color: Colors.lightBlue),
-              title: Text("겨울 콘서트"),
-              subtitle: Text("12월 5일 - 구미문화예술회관"),
+
+            // ✅ 두 번째 행사
+            ListTile(
+              leading: const Icon(Icons.music_note, color: Colors.lightBlue),
+              title: const Text("겨울 콘서트"),
+              subtitle: const Text("12월 5일 - 구미문화예술회관"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => EventDetailPage(
+                      title: "겨울 콘서트",
+                      location: "구미문화예술회관",
+                      date: "2025년 12월 5일",
+                      time: "오후 7시 ~ 9시",
+                      description:
+                      "겨울을 따뜻하게 물들일 클래식 콘서트입니다. 지역 오케스트라와 유명 연주자가 함께하는 특별한 무대",
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -560,7 +589,112 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
   }
 }
 
+class EventDetailPage extends StatelessWidget {
+  final String title;
+  final String location;
+  final String date;
+  final String time;
+  final String description;
 
+  const EventDetailPage({
+    super.key,
+    required this.title,
+    required this.location,
+    required this.date,
+    required this.time,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        automaticallyImplyLeading: false, // ✅ 왼쪽 화살표 제거
+        title: Text(
+          title,
+          style: const TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
+        ),
+        backgroundColor: Colors.lightBlue,
+        centerTitle: true,
+        elevation: 0,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Card(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              elevation: 3,
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        const Icon(Icons.place, color: Colors.lightBlue),
+                        const SizedBox(width: 8),
+                        Text(location,
+                            style: const TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.date_range, color: Colors.lightBlue),
+                        const SizedBox(width: 8),
+                        Text(date, style: const TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, color: Colors.lightBlue),
+                        const SizedBox(width: 8),
+                        Text(time, style: const TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 10),
+                    Text(description,
+                        style: const TextStyle(
+                            fontSize: 15, color: Colors.black87, height: 1.4)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 30),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                label: const Text("되돌아가기",
+                    style: TextStyle(color: Colors.white, fontSize: 16)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.lightBlue,
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class ChatPage extends StatelessWidget {
   final List<Map<String, String>> chatList = [ {

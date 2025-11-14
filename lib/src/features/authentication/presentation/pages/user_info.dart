@@ -280,7 +280,7 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const Home()
+                        builder: (_) => MainScreen()
                       ),
                     );
                   }

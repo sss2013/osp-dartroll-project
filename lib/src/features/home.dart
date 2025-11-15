@@ -1,82 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'dart:ui';
 import 'package:cultureyo/src/features/community/presentation/pages/board_page.dart';
-
-class Home extends StatelessWidget {
-  const Home({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Login',
-      theme: ThemeData(
-        primarySwatch: Colors.lightBlue,
-        inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15.0),
-          ),
-          filled: true,
-          fillColor: Colors.white,
-        ),
-      ),
-      home: InterestSelectPage(),
-    );
-  }
-}
-
-/// 관심사 선택 페이지
-class InterestSelectPage extends StatelessWidget {
-  final List<String> interests = [
-    "음악",
-    "전시",
-    "연극",
-    "체험",
-    "공예",
-    "기타",
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text("관심사 선택"),
-        centerTitle: true,
-        backgroundColor: Colors.lightBlue,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Wrap(
-          spacing: 15,
-          runSpacing: 15,
-          children: interests.map((interest) {
-            return ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(context, interest); // 선택한 값 반환
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.lightBlueAccent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                padding:
-                const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
-              ),
-              icon: const Icon(Icons.star, color: Colors.white),
-              label: Text(
-                interest,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-}
-
+import 'package:cultureyo/src/features/community/presentation/pages/chat_page.dart';
+import 'package:cultureyo/src/features/authentication/presentation/pages/splash_page.dart';
 /// 메인 화면
 class MainScreen extends StatefulWidget {
   @override
@@ -85,32 +11,34 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+
   final List<Widget> _pages = [
     HomePage(),
+    BoardPage(),
     ChatPage(),
-    BoardPage(),  // 기존 push 대신 여기 포함
     ProfilePage(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true,
-      body: _pages[_selectedIndex], // 선택된 탭 화면 표시
+      extendBody: true, // 유리 효과
+      body: _pages[_selectedIndex],
+
       bottomNavigationBar: ClipRRect(
-        borderRadius: const BorderRadius.only(
+        borderRadius: BorderRadius.only(
           topLeft: Radius.circular(25),
           topRight: Radius.circular(25),
         ),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20), // 흐림 효과
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.6),
+              color: Colors.white.withValues(alpha: 0.6),
               border: Border(
-                top: BorderSide(color: Colors.white.withOpacity(0.3), width: 1),
+                top: BorderSide(color: Colors.white.withValues(alpha: 0.3), width: 1),
               ),
-              boxShadow: const [
+              boxShadow: [
                 BoxShadow(
                   color: Colors.black12,
                   blurRadius: 10,
@@ -119,15 +47,13 @@ class _MainScreenState extends State<MainScreen> {
               ],
             ),
             child: BottomNavigationBar(
-              backgroundColor: Colors.white.withOpacity(0.0),
+              backgroundColor: Colors.white.withValues(alpha: 0.0),
               type: BottomNavigationBarType.fixed,
               selectedItemColor: Colors.lightBlue,
               unselectedItemColor: Colors.grey[600],
               currentIndex: _selectedIndex,
               elevation: 0,
-              onTap: (index) {
-                setState(() => _selectedIndex = index); // 그냥 인덱스 변경
-              },
+              onTap: (index) => setState(() => _selectedIndex = index),
               items: const [
                 BottomNavigationBarItem(
                   icon: Icon(Icons.home_outlined),
@@ -137,12 +63,12 @@ class _MainScreenState extends State<MainScreen> {
                 BottomNavigationBarItem(
                   icon: Icon(Icons.chat_bubble_outline),
                   activeIcon: Icon(Icons.chat_bubble),
-                  label: '대화',
+                  label: '게시판',
                 ),
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.view_list_outlined),
-                  activeIcon: Icon(Icons.view_list),
-                  label: '게시판',
+                  icon: Icon(Icons.chat_bubble_outline),
+                  activeIcon: Icon(Icons.chat_bubble),
+                  label: '채팅',
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.person_outline),
@@ -159,7 +85,7 @@ class _MainScreenState extends State<MainScreen> {
 }
 
 
-/// 예시용 홈 페이지
+/// 예시용 페이지
 class HomePage extends StatefulWidget {
   @override
   _HomePageState createState() => _HomePageState();
@@ -178,13 +104,13 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text(
           "컬쳐요",
-          style: TextStyle(
-              fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
         ),
         centerTitle: true,
         backgroundColor: Colors.lightBlue,
         elevation: 0,
       ),
+
       body: SingleChildScrollView(
         child: Center(
           child: ConstrainedBox(
@@ -193,6 +119,8 @@ class _HomePageState extends State<HomePage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 15),
+
+                // 지역 선택 버튼 → 새로운 화면으로 이동
                 ElevatedButton(
                   onPressed: () {
                     Navigator.push(
@@ -203,23 +131,20 @@ class _HomePageState extends State<HomePage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.lightBlue,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text(
-                    "지역 선택",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold),
-                  ),
+                  child: const Text("지역 선택",
+                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
+
                 const SizedBox(height: 20),
+
                 _eventBox("2025 서울 불꽃 축제", "여의도 한강공원", "2025.10.08"),
                 const SizedBox(height: 10),
                 _eventBox("겨울 빛 축제", "강원도 홍천 수목원", "2025.12.02"),
                 const SizedBox(height: 10),
                 _eventBox("전국 푸드 페스티벌", "부산 해운대 광장", "2025.11.21"),
+
                 const SizedBox(height: 40),
               ],
             ),
@@ -237,8 +162,7 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title,
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Text(location, style: const TextStyle(color: Colors.black54)),
             const SizedBox(height: 4),
@@ -250,7 +174,6 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-/// 지역 선택 페이지
 class RegionSelectPage extends StatefulWidget {
   @override
   _RegionSelectPageState createState() => _RegionSelectPageState();
@@ -259,6 +182,7 @@ class RegionSelectPage extends StatefulWidget {
 class _RegionSelectPageState extends State<RegionSelectPage> {
   String? selectedRegion;
   String? selectedInterest;
+
   final List<String> regions = ["서울", "부산", "대구", "광주", "대전", "기타"];
   final List<String> interests = ["공연", "전시", "축제", "콘서트", "연극", "체험"];
 
@@ -275,10 +199,10 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: Colors.lightBlue,
-        foregroundColor: Colors.white,
         centerTitle: true,
         elevation: 0,
       ),
+
       body: SingleChildScrollView(
         child: Center(
           child: ConstrainedBox(
@@ -287,6 +211,7 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 20),
+
                 // 지역 선택 카드
                 _sectionCard(
                   title: "지역 선택",
@@ -303,8 +228,7 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
                         backgroundColor: Colors.grey[200],
                         labelStyle: TextStyle(
                           color: isSelected ? Colors.lightBlue[900] : Colors.black87,
-                          fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                         ),
                         onSelected: (_) {
                           setState(() {
@@ -316,7 +240,9 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
                     }).toList(),
                   ),
                 ),
+
                 const SizedBox(height: 18),
+
                 // 관심사 선택 카드 (지역 선택했을 때만 표시)
                 if (selectedRegion != null)
                   _sectionCard(
@@ -333,8 +259,7 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
                           selectedColor: Colors.lightBlueAccent[100],
                           backgroundColor: Colors.grey[200],
                           labelStyle: TextStyle(
-                            color:
-                            isSelected ? Colors.lightBlue[900] : Colors.black87,
+                            color: isSelected ? Colors.lightBlue[900] : Colors.black87,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                           ),
                           onSelected: (_) {
@@ -346,9 +271,12 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
                       }).toList(),
                     ),
                   ),
+
                 const SizedBox(height: 18),
+
                 // 결과 카드 (지역 + 관심사 선택했을 때만 표시)
                 if (selectedInterest != null) _resultCard(),
+
                 const SizedBox(height: 40),
               ],
             ),
@@ -367,8 +295,7 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(title,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 14),
             child,
           ],
@@ -387,19 +314,51 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text("${selectedRegion!}의 ${selectedInterest!} 추천 행사",
-                style:
-                const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             const Divider(),
-            const ListTile(
-              leading: Icon(Icons.event_available, color: Colors.lightBlue),
-              title: Text("2025 금오문화축제"),
-              subtitle: Text("11월 15일 - 금오공대 대운동장"),
+            // ✅ 첫 번째 행사
+            ListTile(
+              leading: const Icon(Icons.event_available, color: Colors.lightBlue),
+              title: const Text("2025 금오문화축제"),
+              subtitle: const Text("11월 15일 - 금오공대 대운동장"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => EventDetailPage(
+                      title: "2025 금오문화축제",
+                      location: "금오공대 대운동장",
+                      date: "2025년 11월 15일",
+                      time: "오후 2시 ~ 9시",
+                      description:
+                      "금오공과대학교에서 열리는 대규모 문화축제입니다. 공연, 푸드트럭, 불꽃놀이 등 다채로운 프로그램이 진행됩니다.",
+                    ),
+                  ),
+                );
+              },
             ),
-            const ListTile(
-              leading: Icon(Icons.music_note, color: Colors.lightBlue),
-              title: Text("겨울 콘서트"),
-              subtitle: Text("12월 5일 - 구미문화예술회관"),
+
+            // ✅ 두 번째 행사
+            ListTile(
+              leading: const Icon(Icons.music_note, color: Colors.lightBlue),
+              title: const Text("겨울 콘서트"),
+              subtitle: const Text("12월 5일 - 구미문화예술회관"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => EventDetailPage(
+                      title: "겨울 콘서트",
+                      location: "구미문화예술회관",
+                      date: "2025년 12월 5일",
+                      time: "오후 7시 ~ 9시",
+                      description:
+                      "겨울을 따뜻하게 물들일 클래식 콘서트입니다. 지역 오케스트라와 유명 연주자가 함께하는 특별한 무대",
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -408,57 +367,114 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
   }
 }
 
-/// 채팅 페이지
-class ChatPage extends StatelessWidget {
-  final List<Map<String, String>> chatList = [
-    {"name": "이름1", "message": "오늘 저녁에 뭐해?", "time": "오후 6:20"},
-    {"name": "이름2", "message": "사진 잘 봤어요", "time": "오후 5:47"},
-    {"name": "이름3", "message": "내일 회의 가능?", "time": "오전 9:30"},
-  ];
+class EventDetailPage extends StatelessWidget {
+  final String title;
+  final String location;
+  final String date;
+  final String time;
+  final String description;
+
+  const EventDetailPage({
+    super.key,
+    required this.title,
+    required this.location,
+    required this.date,
+    required this.time,
+    required this.description,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text(
-          "채팅",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-            color: Colors.white,
-          ),
+        automaticallyImplyLeading: false, // ✅ 왼쪽 화살표 제거
+        title: Text(
+          title,
+          style: const TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
         ),
-        centerTitle: true,
         backgroundColor: Colors.lightBlue,
+        centerTitle: true,
+        elevation: 0,
       ),
-      body: ListView.builder(
-        itemCount: chatList.length,
-        itemBuilder: (context, index) {
-          final chat = chatList[index];
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.lightBlue,
-              child: Text(chat['name']![0],
-                  style: const TextStyle(color: Colors.white)),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Card(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              elevation: 3,
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        const Icon(Icons.place, color: Colors.lightBlue),
+                        const SizedBox(width: 8),
+                        Text(location,
+                            style: const TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.date_range, color: Colors.lightBlue),
+                        const SizedBox(width: 8),
+                        Text(date, style: const TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, color: Colors.lightBlue),
+                        const SizedBox(width: 8),
+                        Text(time, style: const TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 10),
+                    Text(description,
+                        style: const TextStyle(
+                            fontSize: 15, color: Colors.black87, height: 1.4)),
+                  ],
+                ),
+              ),
             ),
-            title: Text(chat['name']!),
-            subtitle: Text(chat['message']!),
-            trailing: Text(chat['time']!,
-                style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("${chat['name']}님과의 채팅방으로 이동")),
-              );
-            },
-          );
-        },
+            const SizedBox(height: 30),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                label: const Text("되돌아가기",
+                    style: TextStyle(color: Colors.white, fontSize: 16)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.lightBlue,
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// 설정 페이지
+
 class SettingsPage extends StatelessWidget {
   final List<Map<String, dynamic>> settings = [
     {"icon": Icons.notifications, "title": "알림 설정"},
@@ -484,16 +500,23 @@ class SettingsPage extends StatelessWidget {
         backgroundColor: Colors.lightBlue,
       ),
       body: ListView.separated(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         itemCount: settings.length,
-        separatorBuilder: (_, __) => const Divider(),
+        separatorBuilder: (_, __) => Divider(),
         itemBuilder: (context, index) {
           final item = settings[index];
           return ListTile(
             leading: Icon(item['icon'], color: Colors.lightBlue),
             title: Text(item['title']),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {},
+            trailing: Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              if (item['title'] == "로그아웃") {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => SplashPage()),
+                );
+              }
+            },
           );
         },
       ),
@@ -501,7 +524,6 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
-/// 위치 페이지
 class LocationPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -519,7 +541,7 @@ class LocationPage extends StatelessWidget {
         centerTitle: true,
         backgroundColor: Colors.lightBlue,
       ),
-      body: const Center(
+      body: Center(
         child: Text(
           "위치 페이지 (추후 내용 추가)",
           style: TextStyle(color: Colors.grey, fontSize: 16),
@@ -529,7 +551,7 @@ class LocationPage extends StatelessWidget {
   }
 }
 
-/// 내 정보 페이지
+
 class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -551,27 +573,27 @@ class ProfilePage extends StatelessWidget {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            const CircleAvatar(
+            CircleAvatar(
               radius: 50,
               backgroundColor: Colors.lightBlue,
               child: Icon(Icons.person, size: 60, color: Colors.white),
             ),
-            const SizedBox(height: 15),
-            const Text(
+            SizedBox(height: 15),
+            Text(
               "홍길동",
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             Text("test@test.com", style: TextStyle(color: Colors.grey[700])),
-            const SizedBox(height: 30),
+            SizedBox(height: 30),
             Card(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
               elevation: 4,
               child: ListTile(
-                leading: const Icon(Icons.settings, color: Colors.lightBlue),
-                title: const Text("설정으로 이동"),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                leading: Icon(Icons.settings, color: Colors.lightBlue),
+                title: Text("설정으로 이동"),
+                trailing: Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
                   Navigator.push(
                     context,

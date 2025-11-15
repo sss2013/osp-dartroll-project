@@ -26,7 +26,7 @@ class _SplashPageState extends State<SplashPage> {
         case AuthStatus.kakao:
         case AuthStatus.naver:
           Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (_) => const Home()));
+              context, MaterialPageRoute(builder: (_) => MainScreen()));
           break;
         case AuthStatus.none:
           Navigator.pushReplacement(

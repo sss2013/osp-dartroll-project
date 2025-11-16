@@ -296,13 +296,13 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
           ),
         ],
       ),
-      floatingActionButton: Container(
-        margin: const EdgeInsets.only(bottom: 70), // 하단바 위로 띄우기
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 16),
         child: FloatingActionButton(
           onPressed: _onWritePost,
-          backgroundColor: Colors.white, // 버튼 색상 흰색
-          foregroundColor: Colors.black, // 아이콘 색상
-          mini: true, // 크기 축소
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          mini: true,
           child: const Icon(Icons.edit),
         ),
       ),

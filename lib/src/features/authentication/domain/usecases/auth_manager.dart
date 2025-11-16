@@ -2,7 +2,8 @@ import 'package:cultureyo/src/features/authentication/domain/usecases/kakao_logi
 import 'package:cultureyo/src/features/authentication/domain/usecases/naver_login_service.dart';
 import 'package:flutter/foundation.dart';
 
-enum AuthStatus {none,kakao,naver}
+
+enum AuthStatus {none,kakao,naver,}
 
 class AuthManager extends ChangeNotifier{
   final KakaoLoginService kakaoService;
@@ -20,11 +21,6 @@ class AuthManager extends ChangeNotifier{
     final kakao = await kakaoService.checkTokenWithKakao();
     final naver = await naverService.checkTokenWithNaver();
 
-    if(kDebugMode){
-      print("kakaoToken : $kakao");
-      print("naverToken : $naver");
-    }
-
     if (kakao) {
       _status = AuthStatus.kakao;
     } else if (naver) {
@@ -35,6 +31,7 @@ class AuthManager extends ChangeNotifier{
 
     notifyListeners();
   }
+
 
   void logout() {
     _status= AuthStatus.none;

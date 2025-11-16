@@ -56,11 +56,6 @@ android {
         versionName = flutter.versionName
     }
 
-    println("🔑 Kakao key: $kakaoKey")
-    println("🟢 Naver client id: $naverClientId")
-    println("🟢 Naver client secret: $naverClientSecret")
-    println("🟢 Naver client name: $naverClientName")
-
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.

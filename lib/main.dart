@@ -741,55 +741,6 @@ class ChatPage extends StatelessWidget {
   }
 }
 
-class SettingsPage extends StatelessWidget {
-  final List<Map<String, dynamic>> settings = [
-    {"icon": Icons.notifications, "title": "알림 설정"},
-    {"icon": Icons.color_lens, "title": "테마 변경"},
-    {"icon": Icons.security, "title": "개인정보 보호"},
-    {"icon": Icons.logout, "title": "로그아웃"},
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text(
-          "설정",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-            color: Colors.white,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.lightBlue,
-      ),
-      body: ListView.separated(
-        padding: EdgeInsets.all(16),
-        itemCount: settings.length,
-        separatorBuilder: (_, __) => Divider(),
-        itemBuilder: (context, index) {
-          final item = settings[index];
-          return ListTile(
-            leading: Icon(item['icon'], color: Colors.lightBlue),
-            title: Text(item['title']),
-            trailing: Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {
-              if (item['title'] == "로그아웃") {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => LogIn()),
-                );
-              }
-            },
-          );
-        },
-      ),
-    );
-  }
-}
-
 class LocationPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -816,6 +767,89 @@ class LocationPage extends StatelessWidget {
     );
   }
 }
+
+class AccountPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text("계정"),
+        centerTitle: true,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+
+            // 사용자 정보
+            _accountItem("사용자명", "홍길동"),
+            _accountItem("이메일", "example@email.com"),
+            _accountItem("휴대폰", "010-1234-5678"),
+
+            SizedBox(height: 10),
+            Divider(),
+
+            // 비밀번호 변경
+            ListTile(
+              title: Text("비밀번호 변경"),
+              trailing: Icon(Icons.arrow_forward_ios),
+              onTap: () {},
+            ),
+
+            // 계정 삭제
+            ListTile(
+              title: Text("계정 삭제하기",
+                  style: TextStyle(color: Colors.red)),
+              trailing: Icon(Icons.delete, color: Colors.red),
+              onTap: () {},
+            ),
+
+            Spacer(),
+
+            // 로그아웃 버튼
+            Center(
+              child: ElevatedButton(
+                onPressed: () {},
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  padding: EdgeInsets.symmetric(
+                      horizontal: 40, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                child: Text(
+                  "로그아웃",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+  Widget _accountItem(String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+          SizedBox(height: 4),
+          Text(value,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          SizedBox(height: 10),
+        ],
+      ),
+    );
+  }
 
 
 class ProfilePage extends StatelessWidget {
@@ -851,25 +885,57 @@ class ProfilePage extends StatelessWidget {
             ),
             Text("test@test.com", style: TextStyle(color: Colors.grey[700])),
             SizedBox(height: 30),
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 4,
-              child: ListTile(
-                leading: Icon(Icons.settings, color: Colors.lightBlue),
-                title: Text("설정으로 이동"),
-                trailing: Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => SettingsPage()),
-                  );
-                },
-              ),
+            _settingCard(
+              icon: Icons.settings,
+              title: "계정",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => AccountPage()),
+                );
+              },
+            ),
+
+            SizedBox(height: 10),
+            _settingCard(
+              icon: Icons.notifications,
+              title: "알림 설정",
+              onTap: () {},
+            ),
+            SizedBox(height: 10),
+            _settingCard(
+              icon: Icons.color_lens,
+              title: "테마 변경",
+              onTap: () {},
+            ),
+            SizedBox(height: 10),
+            _settingCard(
+              icon: Icons.security,
+              title: "개인정보 보호",
+              onTap: () {},
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // 재사용 카드 위젯
+  Widget _settingCard({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      elevation: 4,
+      child: ListTile(
+        leading: Icon(icon, color: Colors.lightBlue),
+        title: Text(title),
+        trailing: Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: onTap,
       ),
     );
   }

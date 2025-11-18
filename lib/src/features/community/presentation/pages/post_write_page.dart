@@ -1,6 +1,16 @@
 // post_write_page.dart
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:cultureyo/src/features/community/data/post_model.dart';
+
+class Performance {
+  final String id;
+  final String title;
+
+  Performance({required this.id, required this.title});
+}
 
 class PostWritePage extends StatefulWidget {
   final String category; // review / friend
@@ -14,185 +24,22 @@ class PostWritePage extends StatefulWidget {
 class _PostWritePageState extends State<PostWritePage> {
   final TextEditingController titleController = TextEditingController();
   final TextEditingController contentController = TextEditingController();
-  final int titleMaxLength = 80; // 제목 글자 제한
-  final int contentMaxLength = 500; // 내용 글자 제한
+  final int titleMaxLength = 80;
+  final int contentMaxLength = 500;
 
-  // 선택된 공연
-  String? selectedPerformance;
-
-  // 지역/장르/서브지역 데이터
-  String selectedRegion = '전국';
-  String selectedGenre = '전체';
+  Performance? selectedPerformance; // 공연 ID + 제목 저장
 
   final List<String> regions = [
-    '전국', '서울', '경기', '인천', '대전', '세종', '충남', '충북',
-    '광주', '전남', '전북', '대구', '경북', '부산', '울산', '경남', '강원', '제주'
+    '강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '지역 미정'
   ];
 
-  final Map<String, List<String>> subRegions = {
-    '서울': ['전체', '세부지역1', '세부지역2'],
-    '경기': ['전체', '세부지역1', '세부지역2'],
-    '인천': ['전체', '세부지역1', '세부지역2'],
-    '대전': ['전체', '세부지역1', '세부지역2'],
-    '세종': ['전체', '세부지역1', '세부지역2'],
-    '충남': ['전체', '세부지역1', '세부지역2'],
-    '충북': ['전체', '세부지역1', '세부지역2'],
-    '광주': ['전체', '세부지역1', '세부지역2'],
-    '전남': ['전체', '세부지역1', '세부지역2'],
-    '전북': ['전체', '세부지역1', '세부지역2'],
-    '대구': ['전체', '세부지역1', '세부지역2'],
-    '경북': ['전체', '세부지역1', '세부지역2'],
-    '부산': ['전체', '세부지역1', '세부지역2'],
-    '울산': ['전체', '세부지역1', '세부지역2'],
-    '경남': ['전체', '세부지역1', '세부지역2'],
-    '강원': ['전체', '세부지역1', '세부지역2'],
-    '제주': ['전체', '세부지역1', '세부지역2'],
-  };
+  final List<String> genres = [
+    '국악', '기타', '무용/발레', '뮤지컬/오페라', '연극', '음악/콘서트', '전시'
+  ];
 
-  final List<String> genres = ['전체', '뮤지컬', '연극', '콘서트', '클래식'];
+  Timer? _debounce; // 검색 debounce용
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white, // 배경색 흰색
-      appBar: AppBar(
-        backgroundColor: Colors.lightBlue,
-        title: const Text(
-          '게시글 작성',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  // 공연 선택 영역
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 48,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.zero, // 제목/내용 입력칸과 동일
-                          ),
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            selectedPerformance ?? '공연을 선택해주세요',
-                            style: TextStyle(
-                              color: Colors.black, // 제목 입력칸과 동일하게 진하게
-                              fontWeight: FontWeight.normal,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        height: 48,
-                        width: 48,
-                        child: ElevatedButton(
-                          onPressed: _showPerformanceModal,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            shadowColor: Colors.grey,
-                            elevation: 3,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                            padding: EdgeInsets.zero,
-                          ),
-                          child: const Center( // 아이콘 중앙 정렬
-                            child: Icon(
-                              Icons.search,
-                              size: 28,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  // 제목 입력칸
-                  TextField(
-                    controller: titleController,
-                    maxLength: titleMaxLength,
-                    decoration: InputDecoration(
-                      hintText: '제목을 입력해주세요 ($titleMaxLength자 제한)',
-                      border: InputBorder.none,
-                      filled: true,
-                      fillColor: Colors.grey[200],
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 12),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // 내용 입력칸
-                  TextField(
-                    controller: contentController,
-                    maxLength: contentMaxLength,
-                    maxLines: null,
-                    minLines: 10,
-                    decoration: InputDecoration(
-                      hintText: '내용을 입력해주세요 ($contentMaxLength자 제한)',
-                      border: InputBorder.none,
-                      filled: true,
-                      fillColor: Colors.grey[200],
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 12),
-                    ),
-                  ),
-                  const SizedBox(height: 60), // 하단 버튼 공간 확보
-                ],
-              ),
-            ),
-          ),
-          // 사진 업로드 버튼
-          Positioned(
-            left: 12,
-            bottom: 12,
-            child: ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.image, color: Colors.black),
-              label: const Text('사진 업로드', style: TextStyle(color: Colors.black)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
-          // 완료 버튼
-          Positioned(
-            right: 12,
-            bottom: 12,
-            child: ElevatedButton(
-              onPressed: _onSubmit,
-              child: const Text('완료', style: TextStyle(color: Colors.black)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
+  // --- 게시글 작성 ---
   void _onSubmit() {
     if (titleController.text.isEmpty ||
         contentController.text.isEmpty ||
@@ -209,9 +56,9 @@ class _PostWritePageState extends State<PostWritePage> {
       title: titleController.text,
       content: contentController.text,
       author: '닉네임',
-      region: selectedRegion,
+      region: '전체',
       subRegion: '전체',
-      genre: selectedGenre,
+      genre: '전체',
       views: 0,
       likes: 0,
       date: DateTime.now(),
@@ -220,31 +67,94 @@ class _PostWritePageState extends State<PostWritePage> {
     Navigator.pop(context, newPost);
   }
 
-  Future<void> _showPerformanceModal() async {
-    final performances = [
-      {'title': '뮤지컬 A', 'genre': '뮤지컬', 'region': '서울', 'date': '2025-11-20'},
-      {'title': '연극 B', 'genre': '연극', 'region': '경기', 'date': '2025-11-21'},
-      {'title': '콘서트 C', 'genre': '콘서트', 'region': '부산', 'date': '2025-11-22'},
-      {'title': '클래식 D', 'genre': '클래식', 'region': '서울', 'date': '2025-11-23'},
-      {'title': '뮤지컬 E', 'genre': '뮤지컬', 'region': '인천', 'date': '2025-11-24'},
-      {'title': '연극 F', 'genre': '연극', 'region': '경기', 'date': '2025-11-25'},
-    ];
+  // --- HTML 디코딩 함수 ---
+  String htmlDecode(String input) {
+    return input
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&nbsp;', ' ');
+  }
 
-    String modalRegion = selectedRegion;
-    String modalGenre = selectedGenre;
+  // --- 공연 선택 modal ---
+  Future<void> _showPerformanceModal() async {
+    String? modalRegion;
+    String? modalGenre;
     String modalSearch = '';
 
-    final selected = await showDialog<String>(
+    List<Map<String, dynamic>> performanceList = []; // ID + title 저장
+    bool isLoading = false;
+    String? errorMessage;
+
+    late void Function(void Function()) setModalState;
+
+    Future<void> fetchPerformances() async {
+      if (modalRegion == null || modalGenre == null) return;
+      if (!mounted) return;
+
+      setModalState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+
+      final body = {
+        'idxName': 'performance',
+        'area': modalRegion == '지역 미정' ? 'empty' : modalRegion,
+        'genre': modalGenre,
+      };
+
+      try {
+        final response = await http.post(
+          Uri.parse('https://dartroll-nodejs.onrender.com/api/getSimple'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        );
+
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> jsonData = jsonDecode(response.body);
+          final List<dynamic> results = jsonData['results'] ?? [];
+          performanceList = results
+              .map<Map<String, dynamic>>((item) => {
+            'id': item['id'].toString(),
+            'title': htmlDecode(item['title'].toString())
+          })
+              .toList();
+
+          if (performanceList.isEmpty) {
+            errorMessage = "해당 조건에 맞는 공연정보가 존재하지 않습니다.";
+          }
+
+          if (modalSearch.isNotEmpty) {
+            performanceList = performanceList
+                .where((item) => item['title'].contains(modalSearch))
+                .toList();
+          }
+        } else {
+          performanceList = [];
+          errorMessage = "서버 오류";
+        }
+      } catch (e) {
+        performanceList = [];
+        errorMessage = "서버 오류";
+      } finally {
+        if (!mounted) return;
+        setModalState(() {
+          isLoading = false;
+        });
+      }
+    }
+
+    final selected = await showDialog<Performance>(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) {
-          final filtered = performances.where((p) {
-            final matchRegion =
-            (modalRegion == '전국' || p['region'] == modalRegion);
-            final matchGenre = (modalGenre == '전체' || p['genre'] == modalGenre);
-            final matchSearch = p['title']!.contains(modalSearch);
-            return matchRegion && matchGenre && matchSearch;
-          }).toList();
+        builder: (context, _setModalState) {
+          setModalState = _setModalState;
+
+          List<Map<String, dynamic>> filtered = performanceList
+              .where((item) => item['title'].contains(modalSearch))
+              .toList();
 
           return Dialog(
             backgroundColor: Colors.white,
@@ -278,6 +188,7 @@ class _PostWritePageState extends State<PostWritePage> {
                                     setModalState(() {
                                       modalRegion = region;
                                     });
+                                    fetchPerformances();
                                   }
                                 },
                                 style: ElevatedButton.styleFrom(
@@ -292,7 +203,7 @@ class _PostWritePageState extends State<PostWritePage> {
                                   mainAxisAlignment:
                                   MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(modalRegion),
+                                    Text(modalRegion ?? '지역 선택'),
                                     const Icon(Icons.arrow_drop_down),
                                   ],
                                 ),
@@ -319,6 +230,7 @@ class _PostWritePageState extends State<PostWritePage> {
                                     setModalState(() {
                                       modalGenre = genre;
                                     });
+                                    fetchPerformances();
                                   }
                                 },
                                 style: ElevatedButton.styleFrom(
@@ -333,7 +245,7 @@ class _PostWritePageState extends State<PostWritePage> {
                                   mainAxisAlignment:
                                   MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(modalGenre),
+                                    Text(modalGenre ?? '장르 선택'),
                                     const Icon(Icons.arrow_drop_down),
                                   ],
                                 ),
@@ -347,13 +259,17 @@ class _PostWritePageState extends State<PostWritePage> {
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
                             color: Colors.grey[200],
-                            borderRadius: BorderRadius.zero,
                           ),
                           child: TextField(
                             onChanged: (val) {
-                              setModalState(() {
-                                modalSearch = val;
-                              });
+                              modalSearch = val;
+
+                              if (_debounce?.isActive ?? false)
+                                _debounce!.cancel();
+                              _debounce =
+                                  Timer(const Duration(milliseconds: 400), () {
+                                    fetchPerformances();
+                                  });
                             },
                             decoration: const InputDecoration(
                               hintText: '공연 제목으로 검색',
@@ -366,46 +282,54 @@ class _PostWritePageState extends State<PostWritePage> {
                   ),
                   const Divider(),
                   Expanded(
-                    child: ListView.builder(
+                    child: isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : (modalRegion == null || modalGenre == null)
+                        ? const Center(
+                        child: Text('지역과 장르를 선택해주세요'))
+                        : errorMessage != null
+                        ? Center(child: Text(errorMessage!))
+                        : filtered.isEmpty
+                        ? const Center(
+                        child: Text('검색 조건에 맞는 공연이 없습니다.'))
+                        : ListView.separated(
                       itemCount: filtered.length,
+                      separatorBuilder: (context, index) =>
+                          Divider(
+                            color: Colors.grey[300],
+                            thickness: 1,
+                            height: 1,
+                          ),
                       itemBuilder: (context, index) {
-                        final perf = filtered[index];
-                        return Card(
-                          margin: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                    children: [
-                                      Text(perf['title']!,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.bold)),
-                                      Text(
-                                          '${perf['genre']} • ${perf['region']} • ${perf['date']}'),
-                                    ],
-                                  ),
-                                ),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    Navigator.pop(context, perf['title']);
-                                  },
-                                  child: const Text('선택'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: Colors.black,
-                                    shadowColor: Colors.grey,
-                                    elevation: 2,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                        final item = filtered[index];
+                        return ListTile(
+                          title: Text(
+                            item['title'],
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontWeight:
+                              FontWeight.normal,
+                            ),
+                          ),
+                          tileColor: Colors.white,
+                          trailing: ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(
+                                  context,
+                                  Performance(
+                                      id: item['id'],
+                                      title: item['title']));
+                            },
+                            child: const Text('선택'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                              shadowColor: Colors.grey,
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                BorderRadius.circular(8),
+                              ),
                             ),
                           ),
                         );
@@ -420,10 +344,148 @@ class _PostWritePageState extends State<PostWritePage> {
       ),
     );
 
-    if (selected != null) {
+    if (selected != null && mounted) {
       setState(() {
         selectedPerformance = selected;
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    titleController.dispose();
+    contentController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.lightBlue,
+        title: const Text(
+          '게시글 작성',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          height: 48,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                          ),
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            selectedPerformance?.title ??
+                                '공연을 선택해주세요',
+                            style: const TextStyle(
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        height: 48,
+                        width: 48,
+                        child: ElevatedButton(
+                          onPressed: _showPerformanceModal,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            shadowColor: Colors.grey,
+                            elevation: 3,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.zero),
+                            padding: EdgeInsets.zero,
+                          ),
+                          child: const Center(
+                            child: Icon(Icons.search, size: 28),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: titleController,
+                    maxLength: titleMaxLength,
+                    decoration: InputDecoration(
+                      hintText: '제목을 입력해주세요 ($titleMaxLength자 제한)',
+                      border: InputBorder.none,
+                      filled: true,
+                      fillColor: Colors.grey[200],
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: contentController,
+                    maxLength: contentMaxLength,
+                    maxLines: null,
+                    minLines: 10,
+                    decoration: InputDecoration(
+                      hintText: '내용을 입력해주세요 ($contentMaxLength자 제한)',
+                      border: InputBorder.none,
+                      filled: true,
+                      fillColor: Colors.grey[200],
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 60),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 12,
+            bottom: 12,
+            child: ElevatedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.image, color: Colors.black),
+              label: const Text('사진 업로드',
+                  style: TextStyle(color: Colors.black)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 12,
+            bottom: 12,
+            child: ElevatedButton(
+              onPressed: _onSubmit,
+              child: const Text('완료', style: TextStyle(color: Colors.black)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

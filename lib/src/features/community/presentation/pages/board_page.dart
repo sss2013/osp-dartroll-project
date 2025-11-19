@@ -1,4 +1,5 @@
-// board_page.dart
+// lib/src/features/community/presentation/pages/board_page.dart
+
 import 'package:cultureyo/src/features/community/data/post_model.dart';
 import 'package:cultureyo/src/features/community/dummy_posts.dart';
 import 'package:flutter/material.dart';
@@ -6,8 +7,10 @@ import 'post_detail_page.dart';
 import 'post_write_page.dart';
 import '../../../home.dart';
 
+// 💡 _buildPostCard 위젯은 PostDetailPage로 이동했으므로 여기서는 제거합니다.
+
 class BoardPage extends StatefulWidget {
-  const BoardPage({Key? key}) : super(key: key);
+  const BoardPage({super.key});
 
   @override
   State<BoardPage> createState() => _BoardPageState();
@@ -16,39 +19,22 @@ class BoardPage extends StatefulWidget {
 class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  String selectedRegion = '전국';
-  String selectedSubRegion = '전체';
+  String selectedRegion = '전체';
   String selectedGenre = '전체';
 
+  final int postsPerPage = 5;
+
+  // 💡 [통일된 지역 목록]
   final List<String> regions = [
-    '전국', '서울', '경기', '인천', '대전', '세종', '충남', '충북',
-    '광주', '전남', '전북', '대구', '경북', '부산', '울산', '경남', '강원', '제주'
+    '전체', '강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '지역 미정'
   ];
 
-  final Map<String, List<String>> subRegions = {
-    '서울': ['전체', '세부지역1', '세부지역2'],
-    '경기': ['전체', '세부지역1', '세부지역2'],
-    '인천': ['전체', '세부지역1', '세부지역2'],
-    '대전': ['전체', '세부지역1', '세부지역2'],
-    '세종': ['전체', '세부지역1', '세부지역2'],
-    '충남': ['전체', '세부지역1', '세부지역2'],
-    '충북': ['전체', '세부지역1', '세부지역2'],
-    '광주': ['전체', '세부지역1', '세부지역2'],
-    '전남': ['전체', '세부지역1', '세부지역2'],
-    '전북': ['전체', '세부지역1', '세부지역2'],
-    '대구': ['전체', '세부지역1', '세부지역2'],
-    '경북': ['전체', '세부지역1', '세부지역2'],
-    '부산': ['전체', '세부지역1', '세부지역2'],
-    '울산': ['전체', '세부지역1', '세부지역2'],
-    '경남': ['전체', '세부지역1', '세부지역2'],
-    '강원': ['전체', '세부지역1', '세부지역2'],
-    '제주': ['전체', '세부지역1', '세부지역2'],
-  };
-
-  final List<String> genres = ['전체', '뮤지컬', '연극', '콘서트', '클래식'];
+  // 💡 [통일된 장르 목록]
+  final List<String> genres = [
+    '전체', '국악', '기타', '무용/발레', '뮤지컬/오페라', '연극', '음악/콘서트', '전시'
+  ];
 
   int currentPage = 1;
-  final int postsPerPage = 5;
 
   // 로컬 상태 리스트 (글쓰기 기능 테스트용)
   late List<Post> posts;
@@ -60,37 +46,41 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     posts = [...dummyPosts]; // 기존 더미 데이터 복사
   }
 
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   List<Post> _filteredPosts(String category) {
     final filtered = posts.where((post) {
       final regionMatch =
-          selectedRegion == '전국' || post.region == selectedRegion;
-      final subRegionMatch =
-          selectedSubRegion == '전체' || post.subRegion == selectedSubRegion;
+          selectedRegion == '전체' || post.region == selectedRegion;
       final genreMatch = selectedGenre == '전체' || post.genre == selectedGenre;
-      return post.category == category &&
-          regionMatch &&
-          subRegionMatch &&
-          genreMatch;
+
+      return post.category == category && regionMatch && genreMatch;
     }).toList();
+
+    // 최신순 정렬
+    filtered.sort((a, b) => b.date.compareTo(a.date));
 
     final startIndex = (currentPage - 1) * postsPerPage;
     final endIndex = (startIndex + postsPerPage) > filtered.length
         ? filtered.length
         : (startIndex + postsPerPage);
+
+    if (startIndex >= filtered.length) return [];
+
     return filtered.sublist(startIndex, endIndex);
   }
 
   int _getFilteredCount(String category) {
     return posts.where((post) {
       final regionMatch =
-          selectedRegion == '전국' || post.region == selectedRegion;
-      final subRegionMatch =
-          selectedSubRegion == '전체' || post.subRegion == selectedSubRegion;
+          selectedRegion == '전체' || post.region == selectedRegion;
       final genreMatch = selectedGenre == '전체' || post.genre == selectedGenre;
-      return post.category == category &&
-          regionMatch &&
-          subRegionMatch &&
-          genreMatch;
+
+      return post.category == category && regionMatch && genreMatch;
     }).length;
   }
 
@@ -110,27 +100,8 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
 
     if (region == null) return;
 
-    String subRegion = '전체';
-    if (region != '전국') {
-      final selectedSub = await showDialog<String>(
-        context: context,
-        builder: (context) => SimpleDialog(
-          title: const Text('세부지역 선택'),
-          children: subRegions[region]!
-              .map((sub) => SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, sub),
-            child: Text(sub),
-          ))
-              .toList(),
-        ),
-      );
-
-      if (selectedSub != null) subRegion = selectedSub;
-    }
-
     setState(() {
       selectedRegion = region;
-      selectedSubRegion = subRegion;
       currentPage = 1;
     });
   }
@@ -158,16 +129,13 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   }
 
   String getRegionDisplayText() {
-    if (selectedRegion == '전국') return '지역: 전국';
-    if (selectedSubRegion == '전체') return '지역: $selectedRegion';
-    return '지역: $selectedRegion > $selectedSubRegion';
+    return '지역: $selectedRegion';
   }
 
   String getGenreDisplayText() {
     return '장르: $selectedGenre';
   }
 
-  // 글쓰기 버튼 클릭
   void _onWritePost() async {
     final newPost = await Navigator.push<Post?>(
       context,
@@ -297,6 +265,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
         ],
       ),
       floatingActionButton: Padding(
+        // FloatingActionButton의 하단 패딩은 그대로 유지
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 16),
         child: FloatingActionButton(
           onPressed: _onWritePost,
@@ -314,11 +283,17 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     final posts = _filteredPosts(category);
     final totalPages = (_getFilteredCount(category) / postsPerPage).ceil();
 
+    // 🚨 [수정]: 페이지네이션 가림 현상을 막기 위해 하단 패딩 조정
+    // 72.0은 FloatingActionButton의 크기 및 여백을 고려한 충분한 여유 공간
+    final bottomPadding = MediaQuery.of(context).padding.bottom + 72.0;
+
     return ListView.builder(
-      padding: const EdgeInsets.all(8),
+      // 🚨 [수정]: ListView의 패딩에 계산된 하단 패딩 적용
+      padding: EdgeInsets.fromLTRB(8, 8, 8, bottomPadding),
       itemCount: posts.length + 1,
       itemBuilder: (context, index) {
         if (index == posts.length) {
+          // 페이지네이션 버튼
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
@@ -370,6 +345,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // 기존 태그 (지역/장르)
                     Row(
                       children: [
                         Container(
@@ -398,9 +374,12 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
                       ],
                     ),
                     const SizedBox(height: 6),
+                    // 🚨 [수정]: 제목 1줄 제한 및 생략
                     Text(
                       post.title,
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 6),
                     Row(

@@ -1,7 +1,9 @@
+// board_page.dart
 import 'package:cultureyo/src/features/community/data/post_model.dart';
 import 'package:cultureyo/src/features/community/dummy_posts.dart';
 import 'package:flutter/material.dart';
 import 'post_detail_page.dart';
+import 'post_write_page.dart';
 import '../../../home.dart';
 
 class BoardPage extends StatefulWidget {
@@ -48,14 +50,18 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   int currentPage = 1;
   final int postsPerPage = 5;
 
+  // 로컬 상태 리스트 (글쓰기 기능 테스트용)
+  late List<Post> posts;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    posts = [...dummyPosts]; // 기존 더미 데이터 복사
   }
 
   List<Post> _filteredPosts(String category) {
-    final filtered = dummyPosts.where((post) {
+    final filtered = posts.where((post) {
       final regionMatch =
           selectedRegion == '전국' || post.region == selectedRegion;
       final subRegionMatch =
@@ -75,7 +81,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   }
 
   int _getFilteredCount(String category) {
-    return dummyPosts.where((post) {
+    return posts.where((post) {
       final regionMatch =
           selectedRegion == '전국' || post.region == selectedRegion;
       final subRegionMatch =
@@ -161,6 +167,25 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     return '장르: $selectedGenre';
   }
 
+  // 글쓰기 버튼 클릭
+  void _onWritePost() async {
+    final newPost = await Navigator.push<Post?>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PostWritePage(
+          category: _tabController.index == 0 ? 'review' : 'friend',
+        ),
+      ),
+    );
+
+    if (newPost != null) {
+      setState(() {
+        posts.insert(0, newPost); // 맨 앞에 추가 -> 최신순
+      });
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -196,7 +221,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
       ),
       body: Column(
         children: [
-          // 필터 영역 (개선: 한 줄에 두 버튼)
           Container(
             color: Colors.white,
             padding: const EdgeInsets.all(8.0),
@@ -258,8 +282,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
               ],
             ),
           ),
-
-          // 게시글 리스트 영역
           Expanded(
             child: Container(
               color: Colors.grey[200],
@@ -274,6 +296,17 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
           ),
         ],
       ),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 16),
+        child: FloatingActionButton(
+          onPressed: _onWritePost,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          mini: true,
+          child: const Icon(Icons.edit),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 

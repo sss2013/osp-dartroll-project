@@ -28,10 +28,10 @@ Future<void> main() async {
   );
 
   runApp(
-    ChangeNotifierProvider(
-      create : (_) => authManager,
-      child : const MyApp(),
-    )
+      ChangeNotifierProvider(
+        create : (_) => authManager,
+        child : const MyApp(),
+      )
   );
 }
 

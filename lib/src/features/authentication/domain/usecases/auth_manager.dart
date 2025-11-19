@@ -32,7 +32,6 @@ class AuthManager extends ChangeNotifier{
     notifyListeners();
   }
 
-
   void logout() {
     _status= AuthStatus.none;
     notifyListeners();

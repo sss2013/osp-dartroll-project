@@ -1,7 +1,18 @@
 import 'package:flutter/material.dart';
+class UserProfile {
+  final String id;
+  final String name;
+  final String profileImageUrl;
+
+  UserProfile({
+    required this.id,
+    required this.name,
+    required this.profileImageUrl,
+  });
+}
 
 class Message{
-  final String sender;
+  final String sender;//나중에 UserProfile로 바꾸던지 해야할듯
   final String text;
   final DateTime time;
   Message({required this.sender,required this.text,required this.time});
@@ -43,30 +54,30 @@ class _ChatPageState extends State<ChatPage> {
   List<ChatRoom> chatRooms = [//Message 부분이 많이 필요없음 마지막 1개만 있으면 됨
     ChatRoom(
       id: 'room1',
-      title: '구미라면 축제',
+      title: 'K-푸드 페스티벌 넉넉',
       participants: ['나', '이훈이', '맹구'],
       messages: [
         Message(sender: '맹구', text: '다들 시간 맞춰 도착하실 거죠? >.<',time: DateTime.now()),
         Message(sender: '이훈이', text: '어디에서 모이기로 했죠?',time: DateTime.now()),
-        Message(sender: '나', text: '구미역입니당',time: DateTime.now()),
+        Message(sender: '나', text: '광화문역입니당',time: DateTime.now()),
       ],
     ),
     ChatRoom(
       id: 'room2',
-      title: '구미 K-POP 콘서트',
+      title: '한강역사탐방',
       participants: ['나', '김철수', '신짱구'],
       messages: [
-        Message(sender: '김철수', text: '저 금오공대 앞이에요 다들 어디에요?',time: DateTime.now()),
+        Message(sender: '김철수', text: '다들 어디에요?',time: DateTime.now()),
         Message(sender: '신짱구', text: '저 지금 버스안입니다.',time: DateTime.now()),
         Message(sender: '나', text: '아.. 죄송해요 지금 출발합니다',time: DateTime.now()),
       ],
     ),
     ChatRoom(
       id: 'room3',
-      title: '브래멘 음악대 - 구미',
+      title: '서울무용제',
       participants: ['나', '봉미선'],
       messages: [
-        Message(sender: '봉미선', text: '저 롯데마트 앞에 노란 모자쓴 5살 아이랑 같이 있어요',time: DateTime.now()),
+        Message(sender: '봉미선', text: '저 혜화역 앞에 노란 모자쓴 5살 아이랑 같이 있어요',time: DateTime.now()),
         Message(sender: '나', text: '저기 보이네요',time: DateTime.now()),
         Message(sender: '봉미선', text: '오늘 아이들이 너무 잘 놀아서 저도 즐거웠어요.',time: DateTime.now()),
         Message(sender: '봉미선', text: '다음에 또 뵐 수 있으면 좋겠네요 :)',time: DateTime.now()),
@@ -179,6 +190,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               itemBuilder: (context, index) {
                 final msg = currentRoom.messages[index];//채팅방의 메세지를 가져옴
                 final isMe = msg.sender == '나';
+                bool showProfile = true;
+                if (index > 0) {
+                  final prev = currentRoom.messages[index - 1];
+                  if (prev.sender == msg.sender) {
+                    showProfile = false; // 같은 사람이면 숨김
+                  }
+                }
                 return Container(//개별 메시지 처리
                   margin: const EdgeInsets.symmetric(vertical: 6),
                   child: Row(
@@ -187,8 +205,12 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       //내 메시지는 프로필 안보이게 상대는 보이게
-                      if (!isMe)
-                        GestureDetector(
+                      Visibility(
+                        maintainSize: true,
+                        maintainAnimation: true,
+                        maintainState: true,
+                        visible:(!isMe && showProfile),
+                        child: GestureDetector(
                           child: CircleAvatar(
                             radius: 18,
                             backgroundColor: Colors.lightBlue,
@@ -198,25 +220,17 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                             ),
                           ),
                           onTap: (){
-                            showDialog(
-                              context: context,
-                              builder: (BuildContext context) {
-                                return AlertDialog(
-                                  title: const Text('프로필'),
-                                  content: const Text('일단 눌림'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(context); // 닫기
-                                      },
-                                      child: const Text('닫기'),
-                                    ),
-                                  ],
-                                );
-                              },
+                            showUserProfile(
+                              context,
+                              UserProfile(
+                                  id: '1', // Todo: sender.~~로 바꾸기
+                                  name: msg.sender,
+                                  profileImageUrl: 'a'//msg.profileImage,
+                              ),
                             );
                           },
                         ),
+                      ),
                       const SizedBox(width: 8),
                       Flexible(//말풍선? 대화칸? 틀
                         child: Column(
@@ -225,7 +239,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                               : CrossAxisAlignment.start,
                           children: [
                             //이름표시
-                            if (!isMe)
+                            if (!isMe && showProfile)
                               Padding(
                                 padding:
                                 const EdgeInsets.only(left: 4, bottom: 2),
@@ -318,21 +332,104 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
 //return false; // 직접 pop 했으므로 기본 pop 막기
 //} child: Sca~~~
 }
-
-class ProfilePageInChat extends StatefulWidget {//채팅방에서 이름을 눌렀을 때 나올 위젯
-  @override
-  State<ProfilePageInChat> createState() => _ProfilePageInChat();
-}
-
-class _ProfilePageInChat extends State<ProfilePageInChat> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(children: [
-      ],),
-      appBar: AppBar(title: Text('')),
-    );
-  }
+void showUserProfile(BuildContext context, UserProfile user) {
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    backgroundColor: Colors.white,
+    builder: (_) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // 프로필 사진
+              CircleAvatar(
+                radius: 40,
+                backgroundImage: NetworkImage(user.profileImageUrl),
+              ),
+              const SizedBox(height: 12),
+              // 이름
+              Text(
+                user.name,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              // 1:1 채팅
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context); // 프로필 닫기
+                    // TODO: user.id로 1대1 채팅방으로 이동시키기
+                  },
+                  child: const Text("1:1 채팅하기"),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // 신고 버튼
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('신고'),
+                        content: Text("${user.name} 님을 신고하시겠습니까?"),
+                        actions: [
+                          TextButton(
+                            child: const Text("취소"),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                          TextButton(
+                            child: const Text(
+                              "신고하기",
+                              style: TextStyle(color: Colors.red),
+                            ),
+                            onPressed: () {
+                              Navigator.pop(context);
+                              // TODO: 신고 처리 추가
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    "신고하기",
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // 닫기 버튼
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "닫기",
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
 
 //채팅방 검색

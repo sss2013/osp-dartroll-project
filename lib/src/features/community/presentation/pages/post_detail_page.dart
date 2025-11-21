@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:cultureyo/src/features/community/data/post_model.dart';
-import 'package:url_launcher/url_launcher.dart'; // 💡 [추가] 링크 열기 패키지
+import 'package:url_launcher/url_launcher.dart';
 
 class PostDetailPage extends StatefulWidget {
   final Post post;
@@ -36,41 +36,53 @@ class _PostDetailPageState extends State<PostDetailPage> {
     );
   }
 
-  // 💡 [추가] 공연 상세 카드 위젯
+  // 💡 [수정] 공연 상세 카드 위젯 (URL만 있으면 표시되도록 변경)
   Widget _buildPerformanceCard(BuildContext context) {
-    // Post 모델에 저장된 값이 없으면 카드를 표시하지 않음
-    if (widget.post.performanceTitle == null || widget.post.performanceUrl == null) {
+    // 1. URL이 없거나 비어있으면 카드를 표시하지 않음 (제목 체크 제거)
+    if (widget.post.performanceUrl == null || widget.post.performanceUrl!.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    final displayTitle = widget.post.performanceTitle!;
     final url = widget.post.performanceUrl!;
 
+    // 2. 제목이 서버에서 안 넘어왔을 경우 기본 텍스트 표시
+    final displayTitle = (widget.post.performanceTitle != null && widget.post.performanceTitle!.isNotEmpty)
+        ? widget.post.performanceTitle!
+        : '이 공연에 대해 더 알고싶다면?';
+
     return Padding(
-      // 내용 아래에 위치하므로 상단에 패딩을 줍니다.
       padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
       child: Card(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          // 💡 [구현] 탭 시 외부 브라우저로 링크 열기
           onTap: () async {
             if (url.isNotEmpty) {
               final uri = Uri.parse(url);
-
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('링크를 열 수 없습니다.')),
-                );
+              try {
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } else {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('링크를 열 수 없습니다.')),
+                    );
+                  }
+                }
+              } catch (e) {
+                // URL 형식이 잘못되었거나 기타 오류 처리
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('잘못된 링크 형식입니다.')),
+                  );
+                }
               }
             }
           },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: Colors.blue[50], // 배경색을 연한 파란색으로 설정
+            color: Colors.blue[50],
             child: Row(
               children: [
                 const Icon(Icons.link, color: Colors.blue, size: 20),
@@ -88,6 +100,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                // 화살표 아이콘 추가 (선택 사항)
+                const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
               ],
             ),
           ),
@@ -97,8 +111,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
   }
 
   Widget _buildCommentItem(int index) {
+    // (기존 댓글 위젯 코드는 동일합니다)
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6), // 댓글간 여백
+      margin: const EdgeInsets.symmetric(vertical: 6),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -108,7 +123,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. 사용자 아이콘 + 닉네임 + 작성일
           Row(
             children: [
               const CircleAvatar(
@@ -122,14 +136,13 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
-              Text(
+              const Text(
                 '2025-11-09',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          // 2. 댓글 내용
           Padding(
             padding: const EdgeInsets.only(left: 44),
             child: Text(
@@ -138,12 +151,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
             ),
           ),
           const SizedBox(height: 8),
-          // 3. 답글/추천/신고
           Padding(
             padding: const EdgeInsets.only(left: 44),
             child: Row(
               children: [
-                // 답글 버튼
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
@@ -153,7 +164,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   child: const Text('답글(2)', style: TextStyle(fontSize: 12)),
                 ),
                 const SizedBox(width: 8),
-                // 추천 버튼
                 GestureDetector(
                   onTap: () {},
                   child: Container(
@@ -172,7 +182,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   ),
                 ),
                 const Spacer(),
-                // 신고 버튼 + 아이콘
                 TextButton.icon(
                   onPressed: () {},
                   icon: const Icon(Icons.report, size: 14, color: Colors.red),
@@ -299,7 +308,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     ),
                   ),
                   const Divider(height: 20),
-                  // 댓글
+                  // 댓글 영역
                   const Text('댓글', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                   const SizedBox(height: 12),
                   ListView.builder(
@@ -332,7 +341,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
-                    enabled: true,
                   ),
                 ),
                 const SizedBox(width: 8),

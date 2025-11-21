@@ -1,12 +1,13 @@
 // post_write_page.dart
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer'; // 로그 사용
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+// 이 경로는 사용자님의 프로젝트 구조에 맞게 조정되었을 수 있습니다.
 import 'package:cultureyo/src/features/community/data/post_model.dart';
 import 'package:cultureyo/src/features/community/data/performance_detail_model.dart';
-import 'package:url_launcher/url_launcher.dart'; // 외부 링크 열기 패키지
+import 'package:url_launcher/url_launcher.dart';
 
 class Performance {
   final String id;
@@ -38,7 +39,6 @@ class _PostWritePageState extends State<PostWritePage> {
   final int contentMaxLength = 500;
 
   Performance? selectedPerformance;
-  // 상세 정보를 저장할 변수
   PerformanceDetail? selectedPerformanceDetail;
 
   final List<String> regions = [
@@ -51,7 +51,98 @@ class _PostWritePageState extends State<PostWritePage> {
 
   Timer? _debounce;
 
-  // --- 게시글 작성 (공연 정보 포함) ---
+  // 💡 [수정됨] 게시물 작성 API 호출 로직: Post 객체 재구성 및 반환 로직 제거
+  Future<void> _createPostApi() async {
+    if (selectedPerformanceDetail == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('공연 상세 정보가 준비되지 않았습니다.')),
+      );
+      return;
+    }
+
+    final PerformanceDetail detail = selectedPerformanceDetail!;
+    final String performanceUrl = detail.url ?? '';
+
+    // 1. 서버로 전송할 요청 본문
+    final Map<String, dynamic> requestBody = {
+      "title": titleController.text,
+      "area": detail.area ?? '지역 미정',
+      "genre": detail.genre ?? '장르 미정',
+      "content": contentController.text,
+      "tap": widget.category,
+      "url": performanceUrl,
+    };
+
+    log('▶️ [POST_REQUEST] 요청 Body: ${jsonEncode(requestBody)}', name: 'API_CHECK');
+
+    try {
+      final response = await http.post(
+        // API 주소 반영: post/upload
+        Uri.parse('https://dartroll-nodejs.onrender.com/api/post/upload'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(requestBody),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // [게시물 작성 성공]
+        try {
+          final Map<String, dynamic> responseData = jsonDecode(response.body);
+
+          // 2. 서버 응답 로깅 (디버깅 목적)
+          log('✅ [POST_SUCCESS_RESPONSE] 응답 데이터: ${responseData}', name: 'API_CHECK');
+
+          // 3. 서버 응답에서 ID 추출 (id로 변경됨)
+          final String? postId = responseData['id']?.toString();
+
+          if (postId == null || postId.isEmpty) {
+            throw FormatException('서버가 게시물 고유 ID를 반환하지 않았습니다.');
+          }
+
+          // ⚠️ [변경됨]: 로컬에서 Post 객체 구성 및 반환 로직 제거됨.
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('게시물이 성공적으로 작성되었습니다.')),
+          );
+
+          // 🚨 [핵심 수정]: 새 Post 객체 반환 없이, 단순 복귀만 수행
+          Navigator.pop(context);
+
+        } on FormatException catch (e) {
+          // ID 누락 또는 JSON 디코딩 실패 처리
+          log('🚨 [응답 파싱 오류] Exception: ${e.message}', name: 'POST_WRITE');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('게시물 작성 실패: ${e.message}')),
+          );
+        } catch (e) {
+          // 기타 런타임 오류 (예: 타입 불일치, 모델 파싱 오류)
+          log('🚨 [게시물 작성 중 알 수 없는 파싱 오류] Exception: $e', name: 'POST_WRITE');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('게시물 작성에 실패했습니다 (데이터 구조 오류).')),
+          );
+        }
+
+      } else {
+        // [API 호출 실패] (4xx 또는 5xx 오류)
+        log('🚨 [게시물 작성 실패] Status: ${response.statusCode}, Body: ${response.body}', name: 'POST_WRITE');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('게시물 작성에 실패했습니다 (서버 오류: ${response.statusCode})')),
+        );
+      }
+    } on TimeoutException {
+      // [타임아웃 에러 처리]
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('게시물 작성 요청 시간이 초과되었습니다. 서버 상태를 확인해주세요.')),
+      );
+    } catch (e) {
+      // [네트워크 오류 또는 기타 예외 처리]
+      log('🚨 [게시물 작성 에러] Exception: $e', name: 'POST_WRITE');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('게시물 작성 중 네트워크 연결 오류가 발생했습니다.')),
+      );
+    }
+  }
+
+  // --- (이하 나머지 코드는 동일) ---
   void _onSubmit() {
     if (titleController.text.isEmpty ||
         contentController.text.isEmpty ||
@@ -62,29 +153,9 @@ class _PostWritePageState extends State<PostWritePage> {
       );
       return;
     }
-
-    final newPost = Post(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      category: widget.category,
-      title: titleController.text,
-      content: contentController.text,
-      author: '닉네임',
-      region: selectedPerformanceDetail!.area ?? '지역 미정',
-      genre: selectedPerformanceDetail!.genre ?? '장르 미정',
-      views: 0,
-      likes: 0,
-      date: DateTime.now(),
-
-      // Post 모델 확장 필드에 값 저장
-      performanceId: selectedPerformance!.id,
-      performanceTitle: selectedPerformance!.title,
-      performanceUrl: selectedPerformanceDetail!.url,
-    );
-
-    Navigator.pop(context, newPost);
+    _createPostApi();
   }
-
-  // --- HTML 디코딩 함수 ---
+  // --- HTML 디코딩 함수 (이하 동일) ---
   String htmlDecode(String input) {
     return input
         .replaceAll('&amp;', '&')
@@ -95,7 +166,7 @@ class _PostWritePageState extends State<PostWritePage> {
         .replaceAll('&nbsp;', ' ');
   }
 
-  // --- 공연 선택 modal ---
+  // --- 공연 선택 modal (이하 동일) ---
   Future<void> _showPerformanceModal() async {
     String? modalRegion;
     String? modalGenre;
@@ -122,12 +193,18 @@ class _PostWritePageState extends State<PostWritePage> {
         'genre': modalGenre,
       };
 
+      log('🔍 [API_REQUEST] URL: https://dartroll-nodejs.onrender.com/api/getSimple', name: 'PERFORMANCE_FETCH');
+      log('🔍 [API_REQUEST] Body: ${jsonEncode(body)}', name: 'PERFORMANCE_FETCH');
+
       try {
         final response = await http.post(
           Uri.parse('https://dartroll-nodejs.onrender.com/api/getSimple'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode(body),
-        );
+        ).timeout(const Duration(seconds: 15));
+
+        log('✅ [API_RESPONSE] Status: ${response.statusCode}', name: 'PERFORMANCE_FETCH');
+        log('✅ [API_RESPONSE] Body Snippet: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}...', name: 'PERFORMANCE_FETCH');
 
         if (response.statusCode == 200) {
           final Map<String, dynamic> jsonData = jsonDecode(response.body);
@@ -150,11 +227,15 @@ class _PostWritePageState extends State<PostWritePage> {
           }
         } else {
           performanceList = [];
-          errorMessage = "서버 오류";
+          errorMessage = "서버 오류 (Status: ${response.statusCode})";
         }
+      } on TimeoutException {
+        performanceList = [];
+        errorMessage = "서버 응답 시간 초과";
       } catch (e) {
         performanceList = [];
-        errorMessage = "서버 오류";
+        errorMessage = "네트워크 오류 또는 서버 접속 오류";
+        log('🚨 [API_ERROR] Exception: $e', name: 'PERFORMANCE_FETCH');
       } finally {
         if (!mounted) return;
         setModalState(() {
@@ -481,7 +562,7 @@ class _PostWritePageState extends State<PostWritePage> {
           },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: Colors.blue[50], // 배경색을 연한 파란색으로 변경하여 선택된 느낌 강조
+            color: Colors.blue[50],
             child: Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
@@ -507,7 +588,7 @@ class _PostWritePageState extends State<PostWritePage> {
                     ],
                   ),
                 ),
-                // 🗑️ 닫기 버튼 로직 제거됨.
+                // 닫기 버튼 로직 제거됨.
               ],
             ),
           ),
@@ -527,13 +608,13 @@ class _PostWritePageState extends State<PostWritePage> {
   @override
   Widget build(BuildContext context) {
     const TextStyle hintTextStyle = TextStyle(
-      color: Colors.black54, // 밝은 회색 계열
+      color: Colors.black54,
       fontSize: 16.0,
       fontWeight: FontWeight.normal,
     );
 
     const TextStyle selectedPerformanceTextStyle = TextStyle(
-      color: Colors.black, // 선택된 값은 진하게
+      color: Colors.black,
       fontSize: 16.0,
       fontWeight: FontWeight.w500,
     );
@@ -565,7 +646,6 @@ class _PostWritePageState extends State<PostWritePage> {
                     children: [
                       Expanded(
                         child: Container(
-                          // 🚨 [수정 완료]: height 고정값 제거 및 수직 패딩 조정
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                           decoration: BoxDecoration(
                             color: Colors.grey[200],
@@ -574,7 +654,7 @@ class _PostWritePageState extends State<PostWritePage> {
                           alignment: Alignment.centerLeft,
                           child: Text(
                             selectedPerformance?.title ?? '공연을 선택해주세요',
-                            maxLines: 3, // 최대 3줄까지 허용
+                            maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                             style: selectedPerformance != null
                                 ? selectedPerformanceTextStyle
@@ -638,11 +718,10 @@ class _PostWritePageState extends State<PostWritePage> {
                           horizontal: 12, vertical: 12),
                     ),
                   ),
-                  const SizedBox(height: 12), // 내용 필드와 카드 사이 간격 추가
+                  const SizedBox(height: 12),
 
-                  // ▼▼▼▼▼ 공연 상세 카드 위젯 ▼▼▼▼▼
+                  // 4. 공연 상세 카드 위젯
                   _buildPerformanceCard(),
-                  // ▲▲▲▲▲ ▲▲▲▲▲
 
                   const SizedBox(height: 60),
                 ],

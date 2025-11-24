@@ -1,14 +1,37 @@
-name: Set up Android SDK path and create local.properties
-  env:
-    ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-  run: |
-    mkdir -p android
-    if [ -n "${ANDROID_SDK_ROOT:-}" ]; then
-      echo "sdk.dir=${ANDROID_SDK_ROOT}" > android/local.properties
-    elif [ -n "${ANDROID_HOME:-}" ]; then
-      echo "sdk.dir=${ANDROID_HOME}" > android/local.properties
-    else
-      # 안전한 기본값(환경에 맞게 수정)
-      echo "sdk.dir=/usr/local/lib/android/sdk" > android/local.properties
-    fi
+name: CI
 
+on:
+  push:
+    branches: [ feature/login ]
+  pull_request:
+    branches: [ develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK path and create local.properties
+        env:
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+        run: |
+          mkdir -p android
+          if [ -n "${ANDROID_SDK_ROOT:-}" ]; then
+            echo "sdk.dir=${ANDROID_SDK_ROOT}" > android/local.properties
+          elif [ -n "${ANDROID_HOME:-}" ]; then
+            echo "sdk.dir=${ANDROID_HOME}" > android/local.properties
+          else
+            echo "sdk.dir=/usr/local/lib/android/sdk" > android/local.properties
+          fi
+
+      - name: Build with Gradle
+        run: ./gradlew assembleDebug

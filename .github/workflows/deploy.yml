@@ -33,6 +33,13 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      - name: Create .env file
+        run: |
+            # 멀티라인 하나의 Secret을 그대로 쓰는 경우
+            cat > .env <<'EOF'
+            ${{ secrets.ENV_FILE_CONTENT }}
+            EOF
+
       # local.properties 생성 (sdk.dir + flutter.sdk)
       - name: Create android/local.properties
         env:

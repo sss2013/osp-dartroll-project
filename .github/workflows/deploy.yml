@@ -11,7 +11,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,18 +21,22 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK path and create local.properties
-        env:
-          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      # (선택) local.properties 생성
+      - name: Create local.properties
         run: |
-          mkdir -p android
-          if [ -n "${ANDROID_SDK_ROOT:-}" ]; then
-            echo "sdk.dir=${ANDROID_SDK_ROOT}" > android/local.properties
-          elif [ -n "${ANDROID_HOME:-}" ]; then
-            echo "sdk.dir=${ANDROID_HOME}" > android/local.properties
-          else
-            echo "sdk.dir=/usr/local/lib/android/sdk" > android/local.properties
-          fi
+          echo "sdk.dir=/usr/local/lib/android/sdk" > android/local.properties
 
-      - name: Build with Gradle
-        run: ./gradlew assembleDebug
+      # 디버그용: 구조 확인
+      - name: Debug directory structure
+        run: |
+          pwd
+          ls -al
+          ls -al android
+          ls -al android/gradle/wrapper || true
+
+      # 핵심: android 디렉터리에서 gradlew 실행
+      - name: Build Android
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug

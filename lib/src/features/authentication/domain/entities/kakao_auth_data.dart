@@ -18,8 +18,8 @@ class KakaoAuthData {
     'refresh_token_expires_at': refreshTokenExpiresAt?.toUtc().toIso8601String(),
   };
 
-  @override
-  String toString() {
-    return 'KakaoAuthData(accessToken: $accessToken, accessExp: ${accessTokenExpiresAt.toIso8601String()}, refreshToken: $refreshToken, refreshExp: ${refreshTokenExpiresAt?.toIso8601String()})';
-  }
+  // @override
+  // String toString() {
+  //   return 'KakaoAuthData(accessToken: $accessToken, accessExp: ${accessTokenExpiresAt.toIso8601String()}, refreshToken: $refreshToken, refreshExp: ${refreshTokenExpiresAt?.toIso8601String()})';
+  // }
 }

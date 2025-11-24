@@ -18,6 +18,7 @@ dependencies:
   flutter_naver_login: ^2.1.1  # (현재 pub.dev 최신 안정 버전)
   provider: ^6.1.2  # ✅ 이 줄 추가 (현재 최신 버전)
 
+  flutter_secure_storage: ^9.0.0
 
   # State management
   bloc: ^8.1.2

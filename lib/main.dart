@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
-import 'package:cultureyo/src/features/home.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

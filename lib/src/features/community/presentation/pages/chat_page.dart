@@ -420,7 +420,7 @@ void showUserProfile(BuildContext context, UserProfile user) {
                 child: OutlinedButton(
                   onPressed: () => Navigator.pop(context),
                   child: const Text(
-                    "닫기",
+                    '닫기',
                   ),
                 ),
               ),

@@ -1,11 +1,12 @@
-import 'package:cultureyo/src/features/authentication/domain/entities/KakaoAuthData.dart';
 import 'package:cultureyo/src/features/authentication/domain/usecases/auth_manager.dart';
 import 'package:cultureyo/src/features/authentication/presentation/pages/user_info.dart';
-import 'package:dio/dio.dart';
+import 'package:cultureyo/src/features/home.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+
+enum Auth { naver, kakao }
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,76 +16,66 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final Dio _dio = Dio();
   bool _loading = false;
 
-  Future<bool> _sendTokensToServer(KakaoAuthData data) async {
-    const url = 'https://dartroll-nodejs.onrender.com/api/auth/kakaoSignIn';
-
-    try {
-      final payload = {
-        'provider': 'kakao',
-        'accessToken': data.accessToken,
-        'refreshToken': data.refreshToken,
-        'accessExpiresAt':
-            data.accessTokenExpiresAt.toUtc().toIso8601String(),
-        'refreshExpiresAt':
-            data.refreshTokenExpiresAt?.toUtc().toIso8601String()
-      };
-
-      final resp = await _dio.post(url, data: payload);
-      if (kDebugMode) print(resp);
-      if (resp.statusCode != null &&
-          resp.statusCode! >= 200 &&
-          resp.statusCode! < 300) {
-        // 서버가 자체 토큰을 반환하면 저장 (예시)
-        // final serverToken = resp.data['token'] as String?;
-        // if (serverToken != null) await _secureStorage.write(key: 'server_token', value: serverToken);
-        return true;
-      }
-      return false;
-    } catch (e) {
-      if (kDebugMode) print('서버 전송 실패 : $e');
-      return false;
+  Future<void> _handleLoginResult(
+      BuildContext context, AuthManager authManager, dynamic result, Auth provider) async {
+    late final bool ok;
+    if (!mounted) return;
+    if (result == null) {
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인이 취소되었거나 실패했습니다.')),
+      );
+      return;
     }
-  }
 
-  void _onKakaoPressed(AuthManager authManager) async {
-    setState(() => _loading = true);
+    if (provider == Auth.kakao) {
+      ok = await authManager.kakaoService.sendTokenToServer(result);
+    } else {
+      ok = await authManager.naverService.sendTokenToServer(result);
+    }
 
-    try {
-      final result = await authManager.kakaoService.loginWithKakaoTalk();
-
-      if (!mounted) return;
-      if (result == null) {
-        setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('로그인이 취소되었거나 실패했습니다.')),
-        );
-        return;
-      }
-
-      if (kDebugMode)
-        print('받은 AuthDate : accessExpires=${result.accessTokenExpiresAt}');
-
-      final ok = await _sendTokensToServer(result);
-
-      if (ok) {
-        await authManager.checkAuth();
-
+    if (ok) {
+      final inputResult = await authManager.checkInput();
+      setState(() => _loading = false);
+      if (inputResult != true) {
+        if (!mounted) return ;
         Navigator.pushReplacement(
             context, MaterialPageRoute(builder: (_) => NameInputPage()));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('서버에서 로그인 처리에 실패했습니다. 나중에 다시 시도해주세요')));
+        if (!mounted) return ;
+        Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (_) => MainScreen()));
       }
+    } else {
+      setState(() => _loading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('서버에서 로그인 처리에 실패했습니다. 나중에 다시 시도해주세요')));
+    }
+  }
+
+  void _onPressed(AuthManager authManager, Auth provider) async {
+    setState(() => _loading = true);
+
+    dynamic result;
+    try {
+      if (provider == Auth.kakao) {
+        result = await authManager.kakaoService.login();
+        await _handleLoginResult(context, authManager, result, Auth.kakao);
+      } else {
+        result = await authManager.naverService.login();
+        await _handleLoginResult(context, authManager, result, Auth.naver);
+      }
+
     } catch (e) {
+      if (kDebugMode) {
+        print('로그인 처리중 에러 발생, $e');
+      }
       setState(() {
         _loading = false;
       });
-      if (kDebugMode) print('카카오 로그인 처리 중 오류: $e');
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('로그인 중 오류가 발생했습니다')));
     }
   }
 
@@ -119,7 +110,9 @@ class _LoginPageState extends State<LoginPage> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _loading ? null : () => _onKakaoPressed(authManager),
+                  onPressed: _loading
+                      ? null
+                      : () => _onPressed(authManager, Auth.kakao),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFEE500),
                     shape: RoundedRectangleBorder(
@@ -157,15 +150,9 @@ class _LoginPageState extends State<LoginPage> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () async {
-                    final success = await authManager.naverService.naverLogin();
-                    if (!context.mounted) return;
-                    if (success) {
-                      await authManager.checkAuth();
-                      Navigator.pushReplacement(context,
-                          MaterialPageRoute(builder: (_) => NameInputPage()));
-                    }
-                  },
+                  onPressed: _loading
+                      ? null
+                      : () => _onPressed(authManager, Auth.naver),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF03C75A),
                     shape: RoundedRectangleBorder(

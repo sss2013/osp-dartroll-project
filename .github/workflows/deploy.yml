@@ -1,4 +1,4 @@
-- name: Set up Android SDK path and create local.properties
+name: Set up Android SDK path and create local.properties
   env:
     ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
   run: |
@@ -11,3 +11,4 @@
       # 안전한 기본값(환경에 맞게 수정)
       echo "sdk.dir=/usr/local/lib/android/sdk" > android/local.properties
     fi
+

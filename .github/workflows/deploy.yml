@@ -21,12 +21,38 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # (선택) local.properties 생성
-      - name: Create local.properties
-        run: |
-          echo "sdk.dir=/usr/local/lib/android/sdk" > android/local.properties
+      # Flutter 설치
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # 필요 시 버전 고정
+          # flutter-version: '3.24.3'
 
-      # 디버그용: 구조 확인
+      # (선택) 의존성 받기
+      - name: Flutter pub get
+        run: flutter pub get
+
+      # local.properties 생성 (sdk.dir + flutter.sdk)
+      - name: Create android/local.properties
+        env:
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+        run: |
+          mkdir -p android
+          # which flutter: .../flutter/bin/flutter -> 상위 두 단계가 FLUTTER_ROOT (.../flutter)
+          FLUTTER_ROOT="$(dirname "$(dirname "$(which flutter)")")"
+          ANDROID_DIR="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+
+          {
+            echo "sdk.dir=${ANDROID_DIR}"
+            echo "flutter.sdk=${FLUTTER_ROOT}"
+          } > android/local.properties
+
+      # (디버그) 생성된 값 확인
+      - name: Show local.properties
+        run: cat android/local.properties
+
+      # (디버그) 디렉터리 구조 확인
       - name: Debug directory structure
         run: |
           pwd
@@ -34,7 +60,7 @@ jobs:
           ls -al android
           ls -al android/gradle/wrapper || true
 
-      # 핵심: android 디렉터리에서 gradlew 실행
+      # Android Gradle 빌드 (android 폴더에서)
       - name: Build Android
         working-directory: android
         run: |

@@ -48,6 +48,7 @@ app.*.map.json
 .env.local
 .env.development
 .env.production
+/android/.env
 
 # Firebase config (보안을 위해)
 **/android/app/google-services.json
@@ -64,3 +65,5 @@ coverage/
 # Platform specific
 /android/key.properties
 /ios/Runner/Info.plist.backup
+
+.env

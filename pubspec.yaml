@@ -1,4 +1,4 @@
-name: event_matcher
+name: cultureyo
 description: A regional event matching Flutter application.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
@@ -9,6 +9,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  
+  url_launcher: ^6.3.0
+  
+  http: ^1.2.1 # 최신 버전으로 명시
+  flutter_dotenv: ^5.1.0
+  kakao_flutter_sdk: ^1.9.7+3 # 전체 추가
+  flutter_naver_login: ^2.1.1  # (현재 pub.dev 최신 안정 버전)
+  provider: ^6.1.2  # ✅ 이 줄 추가 (현재 최신 버전)
+
+  flutter_secure_storage: ^9.0.0
 
   # State management
   bloc: ^8.1.2
@@ -59,12 +69,9 @@ flutter:
 
   assets:
     - assets/images/
-    - assets/icons/
     - assets/data/
+    - assets/images/logos/Culture.png
+    - assets/images/icons/kakao_icon.png
+    - assets/images/icons/naver_icon.png
+    - .env
 
-  fonts:
-    - family: NotoSans
-      fonts:
-        - asset: assets/fonts/NotoSansKR-Regular.ttf
-        - asset: assets/fonts/NotoSansKR-Bold.ttf
-          weight: 700

@@ -1,0 +1,14 @@
+- name: Create android/local.properties
+  env:
+    ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }} # 또는 ${{ runner.temp }} 등 CI 환경에 맞게 수정
+  run: |
+    mkdir -p android
+    # ANDROID_SDK_ROOT 또는 ANDROID_HOME 환경변수가 설정되어 있으면 그것을 사용
+    if [ -n "${ANDROID_SDK_ROOT:-}" ]; then
+      echo "sdk.dir=${ANDROID_SDK_ROOT}" > android/local.properties
+    elif [ -n "${ANDROID_HOME:-}" ]; then
+      echo "sdk.dir=${ANDROID_HOME}" > android/local.properties
+    else
+      # Ubuntu GitHub Actions 기본 경로 예시 (환경에 따라 달라질 수 있음)
+      echo "sdk.dir=/usr/local/lib/android/sdk" > android/local.properties
+    fi

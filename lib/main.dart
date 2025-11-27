@@ -2,6 +2,7 @@ import 'package:cultureyo/src/features/authentication/domain/usecases/auth_manag
 import 'package:cultureyo/src/features/authentication/domain/usecases/kakao_login_service.dart';
 import 'package:cultureyo/src/features/authentication/domain/usecases/naver_login_service.dart';
 import 'package:cultureyo/src/features/authentication/presentation/pages/splash_page.dart';
+import 'package:cultureyo/src/features/home.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
@@ -47,7 +48,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const SplashPage()
+      home: MainScreen()
     );
   }
 }

@@ -23,21 +23,25 @@ class _SplashPageState extends State<SplashPage> {
       await authManager.checkAuth();
 
       if (!mounted) return;
-      switch (authManager.status) {
-        case AuthStatus.kakao:
-        case AuthStatus.naver:
-          if (await authManager.checkInput() != true) {
-            Navigator.pushReplacement(
-                context, MaterialPageRoute(builder: (_) => NameInputPage()));
-            break;
-          } else {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder : (_) => MainScreen()));
-          }
-        case AuthStatus.none:
+
+      final status = authManager.status;
+      if (status == AuthStatus.kakao || status==AuthStatus.naver || status == AuthStatus.authenticated) {
+        final inputComplete = await authManager.checkInput();
+        if (inputComplete  != true) {
           Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (_) =>  const LoginPage()));
-          break;
+              context, MaterialPageRoute(builder: (_) => NameInputPage()));
+        } else {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder : (_) => MainScreen()));
+        }
+        return ;
       }
+
+      if (status==AuthStatus.authenticated) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder : (_) => MainScreen()));
+        return ;
+      }
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (_) => const LoginPage()));
     });
   }
 

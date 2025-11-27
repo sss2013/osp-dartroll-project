@@ -1,16 +1,17 @@
+import 'package:cultureyo/src/core/network/dio_client.dart';
 import 'package:cultureyo/src/features/authentication/domain/usecases/auth_manager.dart';
 import 'package:cultureyo/src/features/authentication/domain/usecases/kakao_login_service.dart';
 import 'package:cultureyo/src/features/authentication/domain/usecases/naver_login_service.dart';
 import 'package:cultureyo/src/features/authentication/presentation/pages/splash_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await dotenv.load(fileName: '.env');
 
   final kakaoKey = dotenv.env['KAKAO_NATIVE_APP_KEY'];
@@ -19,12 +20,11 @@ Future<void> main() async {
   if (kDebugMode) {
     print(kakaoKey);
   }
-
-  final kakaoService = KakaoLoginService();
-  final naverService = NaverLoginService();
+  final secureStorage = const FlutterSecureStorage();
+  final dioClient = DioClient(secureStorage);
   final authManager = AuthManager(
-    kakaoService: kakaoService,
-    naverService: naverService,
+    dioClient: dioClient,
+    secureStorage: secureStorage,
   );
 
   runApp(

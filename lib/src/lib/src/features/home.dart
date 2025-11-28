@@ -683,9 +683,9 @@ class EventApiService {
     }
   }
 }
-/// ----------------
+
 /// EventDetailPage
-/// ----------------
+
 class EventDetailPage extends StatelessWidget {
   final EventDetail detail;
 
@@ -786,7 +786,7 @@ class EventDetailPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
 
-                  /// ✅ 이미지
+                  /// 이미지
                   if (detail.imgUrl.isNotEmpty)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
@@ -800,7 +800,7 @@ class EventDetailPage extends StatelessWidget {
 
                   const SizedBox(height: 20),
 
-                  /// ✅ 제목
+                  /// 제목
                   Text(
                     _checkValue(detail.title),
                     style: const TextStyle(
@@ -809,7 +809,7 @@ class EventDetailPage extends StatelessWidget {
 
                   const Divider(height: 30),
 
-                  /// ✅ 기본 정보
+                  /// 기본 정보
                   _detailRow(
                     icon: Icons.calendar_month,
                     label: "기간",
@@ -848,7 +848,7 @@ class EventDetailPage extends StatelessWidget {
 
                   const Divider(height: 30),
 
-                  /// ✅ URL
+                  /// URL
                   const Text(
                     "상세 정보 링크",
                     style:
@@ -860,7 +860,7 @@ class EventDetailPage extends StatelessWidget {
 
                   const Divider(height: 30),
 
-                  /// ✅ ✅ ✅ 지도
+                  /// 지도
                   const Text(
                     "행사 위치 지도",
                     style:

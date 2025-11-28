@@ -920,12 +920,6 @@ class EventDetailPage extends StatelessWidget {
 
                   const SizedBox(height: 10),
 
-                  /// ✅ 좌표 텍스트
-                  Text(
-                    "위치 좌표: (${detail.gpsX}, ${detail.gpsY})",
-                    style:
-                    TextStyle(color: Colors.grey[500], fontSize: 12),
-                  ),
                 ],
               ),
             ),
@@ -935,8 +929,6 @@ class EventDetailPage extends StatelessWidget {
     );
   }
 }
-
-
 
 class AccountPage extends StatelessWidget {
   @override
@@ -1016,7 +1008,6 @@ Widget _accountItem(String title, String value) {
   );
 }
 
-/// ----------------
 /// ProfilePage
 /// ----------------
 class ProfilePage extends StatelessWidget {

@@ -691,6 +691,21 @@ class EventDetailPage extends StatelessWidget {
 
   EventDetailPage({super.key, required this.detail});
 
+  String _formatDate(String raw) {
+    if (raw.isEmpty) return '정보 없음';
+
+    raw = raw.replaceAll('-', '');
+
+    if (raw.length != 8) return raw;
+
+    final y = raw.substring(0, 4);
+    final m = raw.substring(4, 6);
+    final d = raw.substring(6, 8);
+
+    return "$y년 $m월 $d일";
+  }
+
+
   Future<void> _launchUrl(String url) async {
     final uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
@@ -813,9 +828,9 @@ class EventDetailPage extends StatelessWidget {
                   _detailRow(
                     icon: Icons.calendar_month,
                     label: "기간",
-                    value:
-                    "${_checkValue(detail.startDate)} ~ ${_checkValue(detail.endDate)}",
+                    value: "${_formatDate(detail.startDate)} ~ ${_formatDate(detail.endDate)}",
                   ),
+
                   _detailRow(
                     icon: Icons.place,
                     label: "장소",

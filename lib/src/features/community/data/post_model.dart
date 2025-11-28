@@ -6,6 +6,7 @@ class Post {
   final String title;
   final String content;
   final String author;
+  final String authorId; // ⭐ [추가] 작성자 고유 ID 필드
   final String region;
   final String genre;
   final int views;
@@ -23,6 +24,7 @@ class Post {
     required this.title,
     required this.content,
     required this.author,
+    required this.authorId, // ⭐ [추가] 생성자 업데이트
     required this.region,
     required this.genre,
     required this.views,
@@ -55,6 +57,10 @@ class Post {
     // 3. 카테고리: 인자로 받은 category가 있으면 최우선 사용, 없으면 json['tap'], 없으면 기본값
     final String finalCategory = category ?? json['tap'] as String? ?? 'review';
 
+    // 4. 작성자 ID 추출
+    // API 응답 구조에 따라 'userId' 필드에서 가져온다고 가정합니다.
+    final String extractedAuthorId = json['userId'] as String? ?? 'unknown_user';
+
     return Post(
       id: postId,
       category: finalCategory,
@@ -66,6 +72,9 @@ class Post {
       genre: json['genre'] as String? ?? '장르 미정',
       performanceUrl: json['url'] as String?,
       date: postDate,
+
+      // ⭐ [추가] 작성자 고유 ID 매핑
+      authorId: extractedAuthorId,
 
       // 💡 [임의 채움] 디자인 유지를 위한 더미 데이터
       author: json['author'] as String? ?? '익명',

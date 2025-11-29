@@ -34,7 +34,7 @@ class _NameInputPageState extends State<NameInputPage> {
                 children: [
                   SizedBox(height: MediaQuery.of(context).size.height * 0.10),
                   const Text(
-                    '이름을 입력하세요',
+                    '닉네임을 입력해 주세요',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
@@ -47,7 +47,7 @@ class _NameInputPageState extends State<NameInputPage> {
                     ],
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
-                      hintText: '이름',
+                      hintText: '닉네임',
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -220,7 +220,7 @@ class CategorySelectionPage extends StatefulWidget {
 
 class _CategorySelectionPageState extends State<CategorySelectionPage> {
 
-  final List<String> categories = ['국악','기타','무용/발레','뮤지컬/오페라','연극','전시'];
+  final List<String> categories = ['국악','기타','무용/발레','뮤지컬/오페라','연극','전시','행사/축제','교육/체험'];
   final List<String> regions = [
     '강원', '경기','경남', '경북', '광주', '대구','대전','부산','서울','세종','울산','인천'
   ];

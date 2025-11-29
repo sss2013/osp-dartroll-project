@@ -2,14 +2,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:cultureyo/src/features/home.dart';
-
+import 'package:flutter/services.dart';
 class NameInputPage extends StatefulWidget {
+  const NameInputPage({super.key});
   @override
   _NameInputPageState createState() => _NameInputPageState();
 }
 
 class _NameInputPageState extends State<NameInputPage> {
   final TextEditingController _controller = TextEditingController();
+  final bannedNames = [
+    // 시스템/관리 관련
+    '관리자', '운영자', 'Admin', 'Administrator', 'Root', 'SuperUser', 'System', 'Moderator', 'Mod', 'Staff',
+    // 욕설
+    '씨발', '병신', '개새끼', '좆', 'ㅂㅅ', 'ㅅㅂ', 'ㄲㅈ', '시발','애미','애비','ㅄ',
+    // 기타
+    'Test', 'Guest', 'Anonymous', '익명', '유저', 'User'
+  ];
   String name='';
   @override
   Widget build(BuildContext context) {
@@ -31,6 +40,11 @@ class _NameInputPageState extends State<NameInputPage> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: _controller,
+                    maxLength: 7,
+                    inputFormatters: [
+                      LengthLimitingTextInputFormatter(7),
+                      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9ㄱ-ㅎ가-힣]')),
+                    ],
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       hintText: '이름',
@@ -44,7 +58,24 @@ class _NameInputPageState extends State<NameInputPage> {
                 children: [
                   ElevatedButton(
                     onPressed: () {
-                      print("입력된 이름: ${_controller.text}");
+                      final enteredName = _controller.text.trim();
+                      final lowerBanned = bannedNames.map((e) => e.toLowerCase()).toList();
+                      bool isBanned = lowerBanned.any((b) => enteredName.contains(b));
+                      if (isBanned || enteredName.isEmpty) {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            content: Text('사용할 수 없는 이름입니다.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text('확인'),
+                              ),
+                            ],
+                          ),
+                        );
+                        return;
+                      }
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => BirthdayInputPage(name: _controller.text,)),
@@ -62,7 +93,7 @@ class _NameInputPageState extends State<NameInputPage> {
   }
 }
 class BirthdayInputPage extends StatefulWidget {
-  final name;
+  final String name;
   const BirthdayInputPage({
     required this.name,   // 이름 필수로 받기
     super.key,
@@ -73,11 +104,22 @@ class BirthdayInputPage extends StatefulWidget {
 }
 
 class _BirthdayInputPageState extends State<BirthdayInputPage> {
+  bool isLeapYear(int year) {
+    if (year % 4 != 0) return false;
+    if (year % 100 != 0) return true;
+    return year % 400 == 0;
+  }
   int selectedMonth = 1;
-  int selectedYear = 1;
-  int curYear = DateTime.now().year;
+  int selectedYear = 2024;
+  int curYear = 2024;
   int selectedDay = 1;
-  List<int> monthDays = [31,28,31,30,31,30,31,31,30,31,30,31];
+  int getDaysInMonth(int year, int month) {
+    List<int> monthDays = [31,28,31,30,31,30,31,31,30,31,30,31];
+    if (month == 2 && isLeapYear(year)) {
+      return 29;
+    }
+    return monthDays[month - 1];
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -107,7 +149,7 @@ class _BirthdayInputPageState extends State<BirthdayInputPage> {
                                 scrollController: FixedExtentScrollController(initialItem: curYear - 1950),
                                 onSelectedItemChanged: (index){
                                   setState(() {
-                                    selectedYear = index +1;
+                                    selectedYear = index +1950;
                                   });
                                 },
                                 children: List.generate(curYear - 1950+1, (index)=>Center(child: Text('${index+1950}년'),)),
@@ -136,7 +178,7 @@ class _BirthdayInputPageState extends State<BirthdayInputPage> {
                                     selectedDay = index +1;
                                   });
                                 },
-                                children: List.generate(monthDays[selectedMonth-1], (index)=>Center(child: Text('${index+1}일'),)),
+                                children: List.generate(getDaysInMonth(selectedYear,selectedMonth), (index)=>Center(child: Text('${index+1}일'),)),
                               ),)
                           ],) ),
                         ],
@@ -161,10 +203,10 @@ class _BirthdayInputPageState extends State<BirthdayInputPage> {
 
 
 class CategorySelectionPage extends StatefulWidget {
-  final selectedMonth;
-  final selectedYear;
-  final selectedDay;
-  final name;
+  final int selectedMonth;
+  final int selectedYear;
+  final int selectedDay;
+  final String name;
   const CategorySelectionPage({
     required this.name,
     required this.selectedYear,
@@ -178,9 +220,9 @@ class CategorySelectionPage extends StatefulWidget {
 
 class _CategorySelectionPageState extends State<CategorySelectionPage> {
 
-  final List<String> categories = ['뮤지컬','콘서트','클래식','오페라','연극','행사','전시'];
+  final List<String> categories = ['국악','기타','무용/발레','뮤지컬/오페라','연극','전시'];
   final List<String> regions = [
-    '서울', '부산','인천', '대구', '광주', '대전','경기도','강원도','충청도','전라도','경상도','제주도'
+    '강원', '경기','경남', '경북', '광주', '대구','대전','부산','서울','세종','울산','인천'
   ];
 
 
@@ -308,12 +350,12 @@ Future<void> saveUserData({
   required Set<String> categories,
   required Set<String> regions,
 }) async {
-  final birthDay = "$year-$month-$day";
+  final birthDay = '$year-$month-$day';
   final data = {
-    "name": name,
-    "birth_day": birthDay,
-    "preferred_categories": categories.toList(),
-    "preferred_regions": regions.toList(),
+    'name': name,
+    'birth_day': birthDay,
+    'preferred_categories': categories.toList(),
+    'preferred_regions': regions.toList(),
   };
 
 }

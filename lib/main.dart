@@ -21,7 +21,7 @@ Future<void> main() async {
   if (kDebugMode) {
     print(kakaoKey);
   }
-  final secureStorage = const FlutterSecureStorage();
+  const secureStorage = FlutterSecureStorage();
   final dioClient = DioClient(secureStorage);
   final authManager = AuthManager(
     dioClient: dioClient,

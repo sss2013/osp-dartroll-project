@@ -5,6 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cultureyo/src/features/community/presentation/pages/board_page.dart';
 import 'package:cultureyo/src/features/community/presentation/pages/chat_page.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+
+
 
 /// ----------------
 /// MainScreen (탭 관리)
@@ -679,15 +683,29 @@ class EventApiService {
     }
   }
 }
-/// ----------------
+
 /// EventDetailPage
-/// ----------------
+
 class EventDetailPage extends StatelessWidget {
   final EventDetail detail;
 
   EventDetailPage({super.key, required this.detail});
 
-  // URL을 여는 함수
+  String _formatDate(String raw) {
+    if (raw.isEmpty) return '정보 없음';
+
+    raw = raw.replaceAll('-', '');
+
+    if (raw.length != 8) return raw;
+
+    final y = raw.substring(0, 4);
+    final m = raw.substring(4, 6);
+    final d = raw.substring(6, 8);
+
+    return "$y년 $m월 $d일";
+  }
+
+
   Future<void> _launchUrl(String url) async {
     final uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
@@ -699,24 +717,30 @@ class EventDetailPage extends StatelessWidget {
     return value.isEmpty ? '정보 없음' : value;
   }
 
-  // 상세 정보 표시를 위한 재사용 위젯
-  Widget _detailRow({required IconData icon, required String label, required String value}) {
+  Widget _detailRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: Colors.lightBlue, size: 20),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-              SizedBox(height: 4),
-              Container(
+              Text(label,
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+              const SizedBox(height: 4),
+              SizedBox(
                 width: 250,
-                child: Text(value,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w500),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,
                 ),
@@ -728,27 +752,21 @@ class EventDetailPage extends StatelessWidget {
     );
   }
 
-  // 하이퍼링크 기능을 위한 위젯
   Widget _linkRow({required String label, required String url}) {
-    if (url.isEmpty) {
-      return SizedBox.shrink(); // URL이 없으면 아무것도 표시하지 않음
-    }
+    if (url.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: GestureDetector(
         onTap: () async {
           try {
             await _launchUrl(url);
-          } catch (e) {
-            print('URL 실행 오류: $e');
-          }
+          } catch (e) {}
         },
         child: Text(
           '• $label',
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.lightBlue,
             decoration: TextDecoration.underline,
-            decorationColor: Colors.lightBlue,
             fontSize: 15,
           ),
         ),
@@ -758,10 +776,15 @@ class EventDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double lat = double.tryParse(detail.gpsY) ?? 0.0;
+    final double lng = double.tryParse(detail.gpsX) ?? 0.0;
+    final bool hasValidLocation = lat != 0.0 && lng != 0.0;
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text(_checkValue(detail.title), style: TextStyle(color: Colors.white)),
+        title:
+        Text(_checkValue(detail.title), style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.lightBlue,
         centerTitle: true,
       ),
@@ -769,69 +792,45 @@ class EventDetailPage extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Card(
-            color: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             elevation: 4,
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. 대표 이미지
+
+                  /// 이미지
                   if (detail.imgUrl.isNotEmpty)
-                    Center(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          detail.imgUrl,
-                          fit: BoxFit.cover,
-                          height: 250,
-                          width: double.infinity,
-                          loadingBuilder: (context, child, progress) {
-                            if (progress == null) return child;
-                            return Container(
-                              height: 250,
-                              color: Colors.grey[200],
-                              child: Center(child: CircularProgressIndicator(
-                                value: progress.expectedTotalBytes != null
-                                    ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
-                                    : null,
-                                color: Colors.lightBlue,
-                              )),
-                            );
-                          },
-                          errorBuilder: (_, __, ___) => Container(
-                              height: 250,
-                              color: Colors.grey[300],
-                              child: const Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.broken_image, size: 40, color: Colors.grey),
-                                      SizedBox(height: 8),
-                                      Text("이미지 로드 실패", style: TextStyle(color: Colors.grey))
-                                    ],
-                                  )
-                              )
-                          ),
-                        ),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        detail.imgUrl,
+                        height: 250,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
                       ),
                     ),
-                  SizedBox(height: 20),
 
-                  // 2. 제목
+                  const SizedBox(height: 20),
+
+                  /// 제목
                   Text(
                     _checkValue(detail.title),
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 24, fontWeight: FontWeight.bold),
                   ),
-                  Divider(height: 30),
 
-                  // 3. 주요 정보 (일정, 장소, 주소)
+                  const Divider(height: 30),
+
+                  /// 기본 정보
                   _detailRow(
                     icon: Icons.calendar_month,
                     label: "기간",
-                    value: "${_checkValue(detail.startDate)} ~ ${_checkValue(detail.endDate)}",
+                    value: "${_formatDate(detail.startDate)} ~ ${_formatDate(detail.endDate)}",
                   ),
+
                   _detailRow(
                     icon: Icons.place,
                     label: "장소",
@@ -843,9 +842,9 @@ class EventDetailPage extends StatelessWidget {
                     value: _checkValue(detail.placeAddr),
                   ),
 
-                  Divider(height: 30),
+                  const Divider(height: 30),
 
-                  // 4. 추가 정보 (장르, 가격, 연락처)
+                  /// ✅ 추가 정보
                   _detailRow(
                     icon: Icons.category,
                     label: "장르",
@@ -862,30 +861,79 @@ class EventDetailPage extends StatelessWidget {
                     value: _checkValue(detail.phone),
                   ),
 
-                  Divider(height: 30),
+                  const Divider(height: 30),
 
-                  // 5. URL 정보 (링크)
-                  Text("상세 정보 링크", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 10),
-
-                  // 하이퍼링크 적용
+                  /// URL
+                  const Text(
+                    "상세 정보 링크",
+                    style:
+                    TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
                   _linkRow(label: '주최측 URL 바로가기', url: detail.url),
                   _linkRow(label: '장소 URL 바로가기', url: detail.placeUrl),
 
+                  const Divider(height: 30),
 
-                  if (detail.url.isEmpty && detail.placeUrl.isEmpty)
-                    Text("제공되는 상세 URL이 없습니다.", style: TextStyle(color: Colors.grey[600])),
-
-
-                  SizedBox(height: 10),
-                  // 6. 좌표 정보
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10.0),
-                    child: Text(
-                      "위치 좌표: (${_checkValue(detail.gpsX)}, ${_checkValue(detail.gpsY)})",
-                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                    ),
+                  /// 지도
+                  const Text(
+                    "행사 위치 지도",
+                    style:
+                    TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
+                  const SizedBox(height: 12),
+
+                  if (hasValidLocation)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: SizedBox(
+                        height: 220,
+                        child: FlutterMap(
+                          options: MapOptions(
+                            initialCenter: LatLng(lat, lng),
+                            initialZoom: 15,
+                          ),
+                          children: [
+                            TileLayer(
+                              urlTemplate:
+                              "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                              userAgentPackageName: 'com.cultureyo.app',
+                            ),
+                            MarkerLayer(
+                              markers: [
+                                Marker(
+                                  point: LatLng(lat, lng),
+                                  width: 40,
+                                  height: 40,
+                                  child: const Icon(
+                                    Icons.location_pin,
+                                    color: Colors.red,
+                                    size: 40,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      height: 220,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Text(
+                          "위치 정보가 제공되지 않은 행사입니다.",
+                          style:
+                          TextStyle(color: Colors.grey[600]),
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(height: 10),
 
                 ],
               ),
@@ -975,7 +1023,6 @@ Widget _accountItem(String title, String value) {
   );
 }
 
-/// ----------------
 /// ProfilePage
 /// ----------------
 class ProfilePage extends StatelessWidget {

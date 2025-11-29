@@ -70,7 +70,6 @@ flutter:
 
   assets:
     - assets/images/
-    - assets/data/
     - assets/images/logos/Culture.png
     - assets/images/icons/kakao_icon.png
     - assets/images/icons/naver_icon.png

@@ -1,10 +1,10 @@
 import 'package:cultureyo/src/features/authentication/domain/usecases/auth_manager.dart';
-import 'package:cultureyo/src/features/authentication/presentation/pages/user_info.dart';
+import 'package:cultureyo/src/features/profile/domain/user_service.dart';
+import 'package:cultureyo/src/features/profile/usecases/name_input_page.dart';
 import 'package:cultureyo/src/features/home.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'login_page.dart';
 import 'package:provider/provider.dart';
-
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -14,41 +14,50 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> {
-
   @override
   void initState() {
     super.initState();
-    Future.microtask(() async {
-      final authManager = context.read<AuthManager>();
-      await authManager.checkAuth();
+    _initialize();
+  }
 
+  Future<void> _initialize() async {
+    await Future.delayed(Duration.zero);
+    if (!mounted) return;
+
+    final authManager = context.read<AuthManager>();
+
+    await authManager.checkAuth();
+    if (!mounted) return;
+
+    final status = authManager.status;
+
+    if(kDebugMode) {
+      print('Auth Status: $status');
+    }
+
+    if (status != AuthStatus.none) {
+      final inputComplete = await authManager.checkInput();
       if (!mounted) return;
-
-      final status = authManager.status;
-      if (status == AuthStatus.kakao || status==AuthStatus.naver || status == AuthStatus.authenticated) {
-        final inputComplete = await authManager.checkInput();
-        if (inputComplete  != true) {
-          Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (_) => NameInputPage()));
-        } else {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder : (_) => MainScreen()));
+      if(kDebugMode) { print ('Input Complete: $inputComplete'); }
+      if (inputComplete) {
+        if(kDebugMode){
+          final userService = context.read<UserService>();
+          final name = await userService.loadUserName();
+          print('User Name: $name');
         }
-        return ;
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => MainScreen()));
+      } else {
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => const NameInputPage()));
       }
-
-      if (status==AuthStatus.authenticated) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder : (_) => MainScreen()));
-        return ;
-      }
-      Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (_) => const LoginPage()));
-    });
+    } else {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-        body: Center(child: CircularProgressIndicator())
-    );
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }

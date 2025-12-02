@@ -1,5 +1,6 @@
 import 'package:cultureyo/src/features/authentication/domain/usecases/auth_manager.dart';
-import 'package:cultureyo/src/features/authentication/presentation/pages/user_info.dart';
+import 'package:cultureyo/src/features/profile/usecases/name_input_page.dart';
+import 'package:cultureyo/src/features/profile/usecases/user_info.dart';
 import 'package:cultureyo/src/features/home.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -20,12 +21,11 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _handleLoginResult(
       BuildContext context, AuthManager authManager, bool success) async {
     if (!mounted) return;
-    setState(() => _loading =false);
+    setState(() => _loading = false);
 
     if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('서버 로그인 처리에 실패했습니다. 다시 시도해주세요'))
-      );
+          const SnackBar(content: Text('서버 로그인 처리에 실패했습니다. 다시 시도해주세요')));
       return;
     }
 
@@ -33,12 +33,14 @@ class _LoginPageState extends State<LoginPage> {
       final inputResult = await authManager.checkInput();
       if (!mounted) return;
 
-      if (inputResult != true) {
-        Navigator.pushReplacement(context,MaterialPageRoute(builder: (_)=> NameInputPage()));
+      if (inputResult) {
+        Navigator.pushAndRemoveUntil(context,
+            MaterialPageRoute(builder: (_) => MainScreen()), (route) => false);
       } else {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) =>  MainScreen()));
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => const NameInputPage()));
       }
-    } catch(e) {
+    } catch (e) {
       if (kDebugMode) print('checkInput 중 에러 : $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

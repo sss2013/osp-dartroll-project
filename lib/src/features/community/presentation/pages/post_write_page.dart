@@ -1,3 +1,4 @@
+// post_write_page.dart
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
@@ -44,34 +45,17 @@ class _PostWritePageState extends State<PostWritePage> {
     '강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '지역 미정'
   ];
 
-  // 장르 항목에 '행사/축제'와 '교육/체험' 추가
   final List<String> genres = [
-    '국악', '기타', '무용/발레', '뮤지컬/오페라', '연극', '음악/콘서트', '전시',
-    '행사/축제',
-    '교육/체험'
+    '국악', '기타', '무용/발레', '뮤지컬/오페라', '연극', '음악/콘서트', '전시'
   ];
 
   Timer? _debounce;
 
-  // 선택된 장르에 따라 idxName을 결정하는 헬퍼 함수
-  String _getIdxName(String selectedGenre) {
-    if (selectedGenre == '행사/축제') {
-      return 'festival';
-    } else if (selectedGenre == '교육/체험') {
-      return 'experience';
-    } else {
-      // 그 외의 모든 기존 장르는 'performance' 유지
-      return 'performance';
-    }
-  }
-
-
-  // 게시물 작성 API 호출 로직 (최종 수정)
+  // 💡 [수정됨] 게시물 작성 API 호출 로직: Post 객체 재구성 및 반환 로직 제거
   Future<void> _createPostApi() async {
-    // 1. 필수 데이터 확인
-    if (selectedPerformanceDetail == null || selectedPerformance == null) {
+    if (selectedPerformanceDetail == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('공연 정보가 올바르게 선택되지 않았습니다.')),
+        const SnackBar(content: Text('공연 상세 정보가 준비되지 않았습니다.')),
       );
       return;
     }
@@ -79,36 +63,21 @@ class _PostWritePageState extends State<PostWritePage> {
     final PerformanceDetail detail = selectedPerformanceDetail!;
     final String performanceUrl = detail.url ?? '';
 
-    // 2. 💡 [수정] Prefix에 따라 최종 장르값 결정 (게시물 업로드용)
-    // - detail.genre가 null일 경우 (festival/experience의 경우) idxName에 맞는 장르명을 사용.
-    // - performance의 경우 detail.genre를 사용하고, 없을 경우 '장르 미정'을 사용.
-    String finalGenre = detail.genre ?? '장르 미정';
-    final String prefix = selectedPerformance!.idxName; // festival, experience, performance
-
-    if (prefix == 'festival') {
-      finalGenre = '행사/축제';
-    } else if (prefix == 'experience') {
-      finalGenre = '교육/체험';
-    }
-
-    // 3. 💡 [요청 반영] userId와 context 필드명 적용
-    String currentUserId = 'testUser123'; // 임시 테스트 ID 사용
-
-    // 4. 서버로 전송할 요청 본문
+    // 1. 서버로 전송할 요청 본문
     final Map<String, dynamic> requestBody = {
       "title": titleController.text,
-      "userId": currentUserId, // 테스트 userId 반영
       "area": detail.area ?? '지역 미정',
-      "genre": finalGenre, // 최종 결정된 장르 값 사용
-      "content": contentController.text, // content -> context로 필드명 변경
-      "url": performanceUrl,
+      "genre": detail.genre ?? '장르 미정',
+      "content": contentController.text,
       "tap": widget.category,
+      "url": performanceUrl,
     };
 
     log('▶️ [POST_REQUEST] 요청 Body: ${jsonEncode(requestBody)}', name: 'API_CHECK');
 
     try {
       final response = await http.post(
+        // API 주소 반영: post/upload
         Uri.parse('https://dartroll-nodejs.onrender.com/api/post/upload'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(requestBody),
@@ -118,26 +87,34 @@ class _PostWritePageState extends State<PostWritePage> {
         // [게시물 작성 성공]
         try {
           final Map<String, dynamic> responseData = jsonDecode(response.body);
+
+          // 2. 서버 응답 로깅 (디버깅 목적)
           log('✅ [POST_SUCCESS_RESPONSE] 응답 데이터: ${responseData}', name: 'API_CHECK');
 
+          // 3. 서버 응답에서 ID 추출 (id로 변경됨)
           final String? postId = responseData['id']?.toString();
 
           if (postId == null || postId.isEmpty) {
             throw FormatException('서버가 게시물 고유 ID를 반환하지 않았습니다.');
           }
 
+          // ⚠️ [변경됨]: 로컬에서 Post 객체 구성 및 반환 로직 제거됨.
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('게시물이 성공적으로 작성되었습니다.')),
           );
 
+          // 🚨 [핵심 수정]: 새 Post 객체 반환 없이, 단순 복귀만 수행
           Navigator.pop(context);
 
         } on FormatException catch (e) {
+          // ID 누락 또는 JSON 디코딩 실패 처리
           log('🚨 [응답 파싱 오류] Exception: ${e.message}', name: 'POST_WRITE');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('게시물 작성 실패: ${e.message}')),
           );
         } catch (e) {
+          // 기타 런타임 오류 (예: 타입 불일치, 모델 파싱 오류)
           log('🚨 [게시물 작성 중 알 수 없는 파싱 오류] Exception: $e', name: 'POST_WRITE');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('게시물 작성에 실패했습니다 (데이터 구조 오류).')),
@@ -145,16 +122,19 @@ class _PostWritePageState extends State<PostWritePage> {
         }
 
       } else {
+        // [API 호출 실패] (4xx 또는 5xx 오류)
         log('🚨 [게시물 작성 실패] Status: ${response.statusCode}, Body: ${response.body}', name: 'POST_WRITE');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('게시물 작성에 실패했습니다 (서버 오류: ${response.statusCode})')),
         );
       }
     } on TimeoutException {
+      // [타임아웃 에러 처리]
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('게시물 작성 요청 시간이 초과되었습니다. 서버 상태를 확인해주세요.')),
       );
     } catch (e) {
+      // [네트워크 오류 또는 기타 예외 처리]
       log('🚨 [게시물 작성 에러] Exception: $e', name: 'POST_WRITE');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('게시물 작성 중 네트워크 연결 오류가 발생했습니다.')),
@@ -162,7 +142,7 @@ class _PostWritePageState extends State<PostWritePage> {
     }
   }
 
-  // --- HTML 디코딩 함수 (동일) ---
+  // --- (이하 나머지 코드는 동일) ---
   void _onSubmit() {
     if (titleController.text.isEmpty ||
         contentController.text.isEmpty ||
@@ -175,6 +155,7 @@ class _PostWritePageState extends State<PostWritePage> {
     }
     _createPostApi();
   }
+  // --- HTML 디코딩 함수 (이하 동일) ---
   String htmlDecode(String input) {
     return input
         .replaceAll('&amp;', '&')
@@ -185,7 +166,7 @@ class _PostWritePageState extends State<PostWritePage> {
         .replaceAll('&nbsp;', ' ');
   }
 
-  // 💡 [수정] 공연 선택 modal 내 API 호출 로직 복구 및 UI 수정 적용
+  // --- 공연 선택 modal (이하 동일) ---
   Future<void> _showPerformanceModal() async {
     String? modalRegion;
     String? modalGenre;
@@ -206,14 +187,10 @@ class _PostWritePageState extends State<PostWritePage> {
         errorMessage = null;
       });
 
-      // 1. 장르에 따라 idxName을 동적으로 결정
-      final String currentIdxName = _getIdxName(modalGenre!);
-
-      // 2. 💡 [로직 복구] 요청 body를 구성. 모든 경우에 선택된 장르를 포함
-      final Map<String, dynamic> body = {
-        'idxName': currentIdxName, // 'performance', 'festival', 'experience'
+      final body = {
+        'idxName': 'performance',
         'area': modalRegion == '지역 미정' ? 'empty' : modalRegion,
-        'genre': modalGenre, // 👈 [수정] 항상 선택된 장르 값을 포함
+        'genre': modalGenre,
       };
 
       log('🔍 [API_REQUEST] URL: https://dartroll-nodejs.onrender.com/api/getSimple', name: 'PERFORMANCE_FETCH');
@@ -234,7 +211,7 @@ class _PostWritePageState extends State<PostWritePage> {
           final List<dynamic> results = jsonData['results'] ?? [];
           performanceList = results
               .map<Map<String, dynamic>>((item) => {
-            'id': item['id'].toString(), // id는 'prefix:number' 형태를 유지
+            'id': item['id'].toString(),
             'title': htmlDecode(item['title'].toString())
           })
               .toList();
@@ -332,13 +309,7 @@ class _PostWritePageState extends State<PostWritePage> {
                                     mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                     children: [
-                                      // 💡 [UI 수정] Flexible로 감싸서 텍스트 오버플로우 방지
-                                      Flexible(
-                                        child: Text(
-                                          modalRegion ?? '지역 선택',
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
+                                      Text(modalRegion ?? '지역 선택'),
                                       const Icon(Icons.arrow_drop_down),
                                     ],
                                   ),
@@ -352,7 +323,7 @@ class _PostWritePageState extends State<PostWritePage> {
                                       context: context,
                                       builder: (context) => SimpleDialog(
                                         title: const Text('장르 선택'),
-                                        children: genres // 💡 확장된 genres 리스트 사용
+                                        children: genres
                                             .map((g) => SimpleDialogOption(
                                           onPressed: () =>
                                               Navigator.pop(context, g),
@@ -379,13 +350,7 @@ class _PostWritePageState extends State<PostWritePage> {
                                     mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                     children: [
-                                      // 💡 [UI 수정] Flexible로 감싸서 텍스트 오버플로우 방지
-                                      Flexible(
-                                        child: Text(
-                                          modalGenre ?? '장르 선택',
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
+                                      Text(modalGenre ?? '장르 선택'),
                                       const Icon(Icons.arrow_drop_down),
                                     ],
                                   ),
@@ -522,7 +487,7 @@ class _PostWritePageState extends State<PostWritePage> {
       // ▼▼▼▼▼ 상세 정보 API 호출 및 저장 ▼▼▼▼▼
       try {
         final detailBody = {
-          'idxName': idxName, // ID에서 파싱된 'festival', 'experience' 등을 그대로 사용
+          'idxName': idxName,
           'contentId': contentId,
         };
 
@@ -559,7 +524,7 @@ class _PostWritePageState extends State<PostWritePage> {
     }
   }
 
-  // --- 공연 상세 정보 카드 UI 위젯 (동일) ---
+  // --- 공연 상세 정보 카드 UI 위젯 (X 버튼 제거) ---
   Widget _buildPerformanceCard() {
     final detail = selectedPerformanceDetail;
 

@@ -1,11 +1,13 @@
 // lib/src/features/community/presentation/pages/board_page.dart
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+// ⭐️ [변경] http 대신 Provider와 PostService를 사용합니다.
+import 'package:provider/provider.dart';
+import 'package:dio/dio.dart'; // ⭐️ DioException 처리를 위해 Dio import
 import 'package:cultureyo/src/features/community/data/post_model.dart';
+import 'package:cultureyo/src/features/community/service/post_service.dart'; // ⭐️ PostService Import
 import 'post_detail_page.dart';
 import 'post_write_page.dart';
 import '../../../home.dart';
@@ -19,6 +21,7 @@ class BoardPage extends StatefulWidget {
 
 class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  // ⭐️ PostService 인스턴스는 initState에서 가져오거나 빌드 메서드에서 context.read를 사용합니다.
 
   String selectedRegion = '전체';
   String selectedGenre = '전체';
@@ -29,7 +32,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     '전체', '강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '지역 미정'
   ];
 
-  // 💡 [수정] 행사/축제, 교육/체험 장르 추가
   final List<String> genres = [
     '전체', '국악', '기타', '무용/발레', '뮤지컬/오페라', '연극', '음악/콘서트', '전시', '행사/축제', '교육/체험'
   ];
@@ -49,11 +51,18 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
         setState(() {
           currentPage = 1;
         });
-        _fetchPosts();
+        // ⭐️ initState에서는 context를 사용할 수 없으므로, post-frame 콜백을 사용합니다.
+        // 또는 didChangeDependencies에서 호출해야 하지만, 간단하게 post-frame 콜백을 사용합니다.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _fetchPosts();
+        });
       }
     });
 
-    _fetchPosts();
+    // ⭐️ 초기 로드도 post-frame 콜백으로 이동 (context 사용 가능 보장)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchPosts();
+    });
   }
 
   @override
@@ -62,69 +71,75 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     super.dispose();
   }
 
-  // 💡 [추가] 조회수 증가 API 호출 함수 (유지)
+  // ⭐️ [수정] 조회수 증가 API 호출 함수: PostService 사용
   Future<void> _increaseViewCount(String postId, String category) async {
-    final url = 'https://dartroll-nodejs.onrender.com/api/post/$postId/views?tap=$category';
-    log('🚀 [API_REQUEST] Increasing view count: $url', name: 'VIEW_COUNT');
+    // context를 통해 PostService 인스턴스를 가져옵니다.
+    final postService = context.read<PostService>();
 
     try {
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 5));
+      // ⭐️ PostService의 increaseViewCount 메서드를 호출하여 로직 대체
+      await postService.increaseViewCount(postId, category);
+      // 서비스 내부에서 이미 로깅이 수행됩니다.
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        log('✅ [API_SUCCESS] View count increased for Post ID: $postId', name: 'VIEW_COUNT');
-      } else {
-        log('🚨 [API_ERROR] Failed to increase view count. Status: ${response.statusCode}', name: 'VIEW_COUNT');
-      }
-    } on TimeoutException {
-      log('🚨 [API_EXCEPTION] Timeout increasing view count.', name: 'VIEW_COUNT');
+    } on DioException catch (e) {
+      log('🚨 [SERVICE_ERROR] Failed to increase view count: ${e.message}', name: 'BOARD_PAGE_VIEW');
     } catch (e) {
-      log('🚨 [API_EXCEPTION] Error increasing view count: $e', name: 'VIEW_COUNT');
+      log('🚨 [API_EXCEPTION] Error increasing view count: $e', name: 'BOARD_PAGE_VIEW');
     }
   }
 
-  // 💡 [수정/유지] API 호출 함수
+  // ⭐️ [수정] 게시글 목록 조회 API 호출 함수: PostService 사용
   Future<void> _fetchPosts() async {
+    // context를 통해 PostService 인스턴스를 가져옵니다.
+    final postService = context.read<PostService>();
+
     setState(() {
       isLoading = true;
     });
 
     final String category = _tabController.index == 0 ? 'review' : 'matching';
-    // API 호출 시 limit=100을 사용하고, 서버에서 해당 카테고리(tap)에 해당하는 데이터를 모두 가져옵니다.
-    // 장르 필터링은 로컬에서 처리되므로, API 호출 자체는 변경할 필요가 없습니다.
-    final url = 'https://dartroll-nodejs.onrender.com/api/post/getAll?page=0&limit=100&tap=$category';
 
-    log('🔍 [API_REQUEST] Fetching posts: $url', name: 'BOARD_PAGE');
+    log('🔍 [SERVICE_REQUEST] Fetching posts for tap=$category', name: 'BOARD_PAGE');
 
     try {
-      final response = await http.get(Uri.parse(url));
+      // ⭐️ PostService의 fetchPosts 메서드를 호출하여 로직 대체
+      final fetchedPosts = await postService.fetchPosts(category);
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final List<dynamic> jsonList = jsonDecode(response.body);
+      setState(() {
+        posts = fetchedPosts;
+        isLoading = false;
+      });
+      log('✅ [SERVICE_SUCCESS] Posts fetched successfully.', name: 'BOARD_PAGE');
 
-        log('✅ [API_RESPONSE] Count: ${jsonList.length}', name: 'BOARD_PAGE');
-
-        setState(() {
-          posts = jsonList.map((json) {
-            return Post.fromApiJson(json as Map<String, dynamic>, category: category);
-          }).toList();
-
-          isLoading = false;
-        });
-      } else {
-        log('🚨 [API_ERROR] Status: ${response.statusCode}', name: 'BOARD_PAGE');
-        setState(() {
-          posts = [];
-          isLoading = false;
-        });
-      }
+    } on DioException catch (e) {
+      log('🚨 [SERVICE_ERROR] DioException fetching posts: ${e.message}', name: 'BOARD_PAGE');
+      _showSnackbar('게시글 목록 로드 실패: ${e.message}');
+      setState(() {
+        posts = [];
+        isLoading = false;
+      });
     } catch (e) {
-      log('🚨 [API_EXCEPTION] $e', name: 'BOARD_PAGE');
+      log('🚨 [API_EXCEPTION] Unknown Error: $e', name: 'BOARD_PAGE');
+      _showSnackbar('게시글 로드 중 알 수 없는 오류 발생');
       setState(() {
         posts = [];
         isLoading = false;
       });
     }
   }
+
+  // ⭐️ [추가] SnackBar 헬퍼 함수 (PostDetailPage에서 가져옴)
+  void _showSnackbar(String message, {Duration duration = const Duration(seconds: 4)}) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: duration,
+        ),
+      );
+    }
+  }
+
 
   // 기존 로컬 필터링 로직 유지 (받아온 API 데이터를 기준으로 필터링)
   List<Post> _filteredPosts(String category) {
@@ -402,6 +417,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
         return GestureDetector(
           onTap: () async {
             // 1. 조회수 증가 API 호출
+            // ⭐️ [변경] Service 호출
             await _increaseViewCount(post.id, post.category);
 
             // 2. 상세 페이지로 이동하며 복귀를 기다림 (await)

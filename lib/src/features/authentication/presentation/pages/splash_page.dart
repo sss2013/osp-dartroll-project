@@ -42,7 +42,7 @@ class _SplashPageState extends State<SplashPage> {
       if (inputComplete) {
         if(kDebugMode){
           final userService = context.read<UserService>();
-          final name = await userService.loadUserName();
+          final name = await userService.loadUserId();
           print('User Name: $name');
         }
         Navigator.pushReplacement(

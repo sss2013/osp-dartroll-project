@@ -3,13 +3,15 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
 import 'package:cultureyo/src/features/community/data/post_model.dart';
 import 'package:cultureyo/src/features/community/presentation/pages/post_edit_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cultureyo/src/features/community/data/comment_model.dart';
 import 'package:cultureyo/src/features/community/service/comment_service.dart';
-import 'package:cultureyo/src/features/community/service/post_service.dart'; // PostService 추가
-
+import 'package:cultureyo/src/features/community/service/post_service.dart';
+import 'package:cultureyo/src/features/profile/domain/user_service.dart'; // ⭐ [추가] UserService import
 
 class PostDetailPage extends StatefulWidget {
   final Post post;
@@ -28,18 +30,26 @@ class _PostDetailPageState extends State<PostDetailPage> {
   List<Comment> _comments = [];
   bool _isLoadingComments = true;
 
-  // 💡 [테스트용] 현재 사용자 ID 정의
-  final String _currentUserId = 'testUser123';
-  final CommentService _commentService = CommentService();
-  final PostService _postService = PostService(); // PostService 인스턴스 추가
+  // 💡 [변경] 더미 데이터 제거 및 실제 ID를 저장할 변수와 로딩 상태 변수 추가
+  String? _currentUserId;
+  bool _isUserIdLoading = true;
+
+
+  // 💡 [변경] Service 인스턴스를 Provider로 주입받을 변수로 선언
+  late CommentService _commentService;
+  late PostService _postService;
+  late UserService _userService; // ⭐ [추가] UserService 변수
 
   String? _replyingToCommentId;
   String _commentHintText = '댓글을 입력하세요...';
 
-  // ⭐ [추가된 로직] 현재 사용자가 게시물 작성자인지 확인하는 Getter
+  // ⭐ [수정] 현재 사용자가 게시물 작성자인지 확인하는 Getter (ID 로드 상태 고려)
   bool get _isAuthor {
+    // ID 로드가 완료되었고, ID가 null이 아니며, 게시물 작성자 ID와 일치할 때만 true
+    if (_isUserIdLoading || _currentUserId == null) return false;
     return _currentUserId == widget.post.authorId;
   }
+
   // ==========================================================
 
 
@@ -47,7 +57,22 @@ class _PostDetailPageState extends State<PostDetailPage> {
   void initState() {
     super.initState();
     likes = widget.post.likes;
-    _fetchComments();
+    // 🚨 _fetchComments는 didChangeDependencies에서 호출되는 _loadCurrentUserAndComments()에 통합됩니다.
+  }
+
+  // 💡 [수정] Service 인스턴스를 context를 통해 가져오는 메서드
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // context.read를 사용하여 Service 인스턴스를 가져옵니다.
+    _commentService = context.read<CommentService>();
+    _postService = context.read<PostService>();
+    _userService = context.read<UserService>(); // ⭐ [추가] UserService 주입
+
+    // 🚨 ID 로드 로직 추가 및 댓글 목록 로드 실행 통합
+    if (_currentUserId == null && _isUserIdLoading) {
+      _loadCurrentUserAndComments();
+    }
   }
 
   @override
@@ -56,6 +81,35 @@ class _PostDetailPageState extends State<PostDetailPage> {
     _commentFocusNode.dispose();
     super.dispose();
   }
+
+  // ⭐ [신규 함수] 사용자 ID 로드와 댓글 로드 로직을 통합 관리
+  Future<void> _loadCurrentUserAndComments() async {
+    // 1. 사용자 ID 로드 시도
+    try {
+      final id = await _userService.loadUserId();
+      if (!mounted) return;
+
+      setState(() {
+        _currentUserId = id; // 실제 유저 ID 저장
+        _isUserIdLoading = false;
+      });
+      log('✅ User ID 로드 성공: $_currentUserId', name: 'USER_LOAD');
+    } on Exception catch (e) {
+      log('🚨 [USER_ID_LOAD_ERROR] $e', name: 'USER_LOAD');
+      if (!mounted) return;
+
+      // ID 로드 실패 시 (예: 로그아웃 상태, 네트워크 오류)
+      _showSnackbar('사용자 정보를 불러오는데 실패했습니다. 댓글 작성/수정/삭제 권한이 제한됩니다.');
+      setState(() {
+        _isUserIdLoading = false;
+        _currentUserId = 'guest_unauth'; // 인증 실패 상태를 나타내는 임시 ID
+      });
+    }
+
+    // 2. ID 로드 성공/실패 여부와 관계없이 댓글 로드 실행
+    _fetchComments();
+  }
+
 
   void _setReplyingTo(Comment parentComment) {
     if (!mounted) return;
@@ -73,6 +127,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     setState(() {
       _replyingToCommentId = null;
       _commentHintText = '댓글을 입력하세요...';
+      FocusScope.of(context).unfocus(); // 키보드 내리기
     });
   }
 
@@ -102,7 +157,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     return sortedList;
   }
 
-  // ⭐ [분리 완료] 댓글 목록 조회 로직: CommentService 호출
+  // ⭐ [수정] 댓글 목록 조회 로직: DioException 처리 추가
   Future<void> _fetchComments() async {
     if (!mounted) return;
     _cancelReplying();
@@ -120,19 +175,27 @@ class _PostDetailPageState extends State<PostDetailPage> {
           _comments = _sortCommentsByHierarchy(fetchedComments);
         });
       }
-    } on TimeoutException {
-      log('🚨 [FETCH_TIMEOUT] 서버 응답 시간 초과', name: 'PAGE_FETCH');
-      _showSnackbar('댓글 목록 로딩 시간 초과');
-      if (mounted) setState(() => _isLoadingComments = false);
+    } on DioException catch (e) { // 💡 [추가] DioException 처리
+      log('🚨 [FETCH_ERROR] DioException: ${e.message}', name: 'COMMENT_FETCH');
+      if (mounted) {
+        final errorMessage = e.response?.data['message']?.toString() ?? '네트워크 오류';
+        _showSnackbar('댓글 로딩 중 오류 발생: $errorMessage');
+        setState(() => _isLoadingComments = false);
+      }
     } catch (e) {
-      log('🚨 [FETCH_ERROR] Exception: $e', name: 'PAGE_FETCH');
-      _showSnackbar('댓글 로딩 중 네트워크 오류 발생');
+      log('🚨 [FETCH_ERROR] Exception: $e', name: 'COMMENT_FETCH');
+      _showSnackbar('댓글 로딩 중 예상치 못한 오류 발생');
       if (mounted) setState(() => _isLoadingComments = false);
     }
   }
 
-  // ⭐ [분리 완료] 댓글 작성/답글 작성 로직: CommentService 호출
+  // ⭐ [수정] 댓글 작성/답글 작성 로직: DioException 처리 추가 및 ID Null 체크
   Future<void> _submitCommentApi() async {
+    if (_currentUserId == null) {
+      _showSnackbar('사용자 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+
     final String commentText = _commentController.text.trim();
     final String? parentId = _replyingToCommentId;
 
@@ -144,64 +207,92 @@ class _PostDetailPageState extends State<PostDetailPage> {
     try {
       final success = await _commentService.submitComment(
         widget.post.id,
-        _currentUserId,
+        _currentUserId!, // ID가 null이 아님을 보장
         commentText,
         parentId: parentId,
       );
 
-      if (success) {
-        _showSnackbar(parentId != null ? '답글이 성공적으로 작성되었습니다.' : '댓글이 성공적으로 작성되었습니다.',duration: const Duration(milliseconds: 1000));
-        _commentController.clear();
-        _cancelReplying();
-        _fetchComments();
-      } else {
-        _showSnackbar(parentId != null ? '답글 작성 실패 (서버 오류)' : '댓글 작성 실패 (서버 오류)');
+      if (mounted) {
+        if (success) {
+          _showSnackbar(parentId != null ? '답글이 성공적으로 작성되었습니다.' : '댓글이 성공적으로 작성되었습니다.',duration: const Duration(milliseconds: 1000));
+          _commentController.clear();
+          _cancelReplying();
+          _fetchComments(); // 새로고침
+        } else {
+          _showSnackbar(parentId != null ? '답글 작성 실패 (서버 오류)' : '댓글 작성 실패 (서버 오류)');
+        }
       }
-    } on TimeoutException {
-      _showSnackbar('작성 요청 시간 초과');
+    } on DioException catch (e) { // 💡 [추가] DioException 처리
+      log('🚨 [SUBMIT_ERROR] DioException: ${e.message}', name: 'COMMENT_SUBMIT');
+      if (mounted) {
+        final errorMessage = e.response?.data['message']?.toString() ?? '네트워크 오류';
+        _showSnackbar('작성 중 오류 발생: $errorMessage');
+      }
     } catch (e) {
-      _showSnackbar('작성 중 네트워크 오류 발생');
+      _showSnackbar('작성 중 예상치 못한 오류 발생');
     }
   }
 
-  // ⭐ [분리 완료] 게시물 삭제 로직: PostService 호출
+  // ⭐ [수정] 게시물 삭제 로직: DioException 처리 추가 및 ID Null 체크
   Future<void> _deletePostApi() async {
+    if (_currentUserId == null) {
+      _showSnackbar('사용자 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+
     try {
       final success = await _postService.deletePost(
         widget.post.id,
-        _currentUserId,
+        _currentUserId!, // ID가 null이 아님을 보장
         widget.post.category,
       );
 
-      if (success) {
-        _showSnackbar('게시물이 성공적으로 삭제되었습니다.');
-        Navigator.pop(context, true);
-      } else {
-        _showSnackbar('게시물 삭제 실패 (서버 오류)');
+      if (mounted) {
+        if (success) {
+          _showSnackbar('게시물이 성공적으로 삭제되었습니다.');
+          Navigator.pop(context, true); // true 반환하여 목록 새로고침 유도
+        } else {
+          _showSnackbar('게시물 삭제 실패 (서버 응답 오류)');
+        }
       }
-    } on TimeoutException {
-      _showSnackbar('게시물 삭제 요청 시간 초과');
+    } on DioException catch (e) { // 💡 [추가] DioException 처리
+      log('🚨 [DELETE_ERROR] DioException: ${e.message}', name: 'POST_DELETE');
+      if (mounted) {
+        final errorMessage = e.response?.data['message']?.toString() ?? '네트워크 오류';
+        _showSnackbar('게시물 삭제 중 오류 발생: $errorMessage');
+      }
     } catch (e) {
-      _showSnackbar('게시물 삭제 중 네트워크 오류 발생');
+      _showSnackbar('게시물 삭제 중 예상치 못한 오류 발생');
     }
   }
 
-  // ⭐ [분리 완료] 댓글 삭제 로직: CommentService 호출
+  // ⭐ [수정] 댓글 삭제 로직: DioException 처리 추가 및 ID Null 체크
   Future<void> _deleteCommentApi(String commentId) async {
+    if (_currentUserId == null) {
+      _showSnackbar('사용자 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+
     log('▶️ [DELETE_COMMENT_INIT] Comment ID: $commentId, User ID: $_currentUserId', name: 'UI_ACTION_DELETE');
     try {
-      final success = await _commentService.deleteComment(commentId, _currentUserId);
+      final success = await _commentService.deleteComment(commentId, _currentUserId!); // ID가 null이 아님을 보장
 
-      if (success) {
-        _showSnackbar('댓글이 성공적으로 삭제되었습니다.');
-        _fetchComments();
-      } else {
-        _showSnackbar('댓글 삭제 실패 (서버 오류)');
+      if (mounted) {
+        if (success) {
+          _showSnackbar('댓글이 성공적으로 삭제되었습니다.');
+          _fetchComments(); // 새로고침
+        } else {
+          _showSnackbar('댓글 삭제 실패 (서버 응답 오류)');
+        }
       }
-    } on TimeoutException {
-      _showSnackbar('댓글 삭제 요청 시간 초과');
+    } on DioException catch (e) { // 💡 [추가] DioException 처리
+      log('🚨 [DELETE_ERROR] DioException: ${e.message}', name: 'COMMENT_DELETE');
+      if (mounted) {
+        final errorMessage = e.response?.data['message']?.toString() ?? '네트워크 오류';
+        _showSnackbar('댓글 삭제 중 오류 발생: $errorMessage');
+      }
     } catch (e) {
-      _showSnackbar('댓글 삭제 중 네트워크 오류 발생');
+      _showSnackbar('댓글 삭제 중 예상치 못한 오류 발생');
     }
   }
 
@@ -313,6 +404,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
     final double leftPadding = comment.parentId != null ? 36.0 : 0.0;
     final bool isReplyingToThis = _replyingToCommentId == comment.id;
 
+    // 💡 [수정] 댓글 삭제 버튼 조건에 _currentUserId가 null이 아닌지 확인 추가
+    final bool canDeleteComment = !isDeleted && _currentUserId != null && comment.userId == _currentUserId;
+
     return Padding(
       padding: EdgeInsets.only(left: leftPadding, top: 6, bottom: 6),
       child: Container(
@@ -389,8 +483,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
                   const Spacer(),
 
-                  // 댓글 삭제 버튼
-                  if (!isDeleted && comment.userId == _currentUserId)
+                  // ⭐ [수정] 댓글 삭제 버튼 조건 변경
+                  if (canDeleteComment)
                     TextButton(
                       onPressed: () {
                         showDialog(
@@ -444,6 +538,17 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+
+    // ⭐ [추가] 유저 ID 로딩 중일 때 로딩 인디케이터 표시
+    if (_isUserIdLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -541,6 +646,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
                               if (result == true) {
                                 _showSnackbar('게시물이 수정되었습니다. 상세 정보 새로고침이 필요합니다.');
+                                // TODO: 수정 완료 후 게시물 상세 정보 갱신 로직 추가 필요
                               }
                             },
                             child: Container(
@@ -624,6 +730,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   Center(
                     child: GestureDetector(
                       onTap: () {
+                        // TODO: 좋아요 API 호출 로직 추가 필요
                         setState(() {
                           likes += 1;
                         });
@@ -720,9 +827,13 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   child: TextField(
                     controller: _commentController,
                     focusNode: _commentFocusNode,
+                    // ⭐ [수정] _currentUserId가 null이면 댓글 입력을 막음
+                    readOnly: _currentUserId == null || _isUserIdLoading,
                     decoration: InputDecoration(
-                      hintText: _commentHintText,
-                      hintStyle: TextStyle(color: Colors.grey[500]),
+                      hintText: _isUserIdLoading
+                          ? '사용자 정보를 불러오는 중...'
+                          : (_currentUserId == null ? '로그인 상태를 확인할 수 없습니다.' : _commentHintText),
+                      hintStyle: TextStyle(color: _currentUserId == null ? Colors.red : Colors.grey[500]),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: BorderSide.none,
@@ -736,12 +847,13 @@ class _PostDetailPageState extends State<PostDetailPage> {
                 const SizedBox(width: 8),
 
                 GestureDetector(
-                  onTap: _submitCommentApi,
+                  // ⭐ [수정] _currentUserId가 null이 아닐 때만 댓글 작성 가능
+                  onTap: (_currentUserId == null || _isUserIdLoading) ? null : _submitCommentApi,
                   child: Container(
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: (_currentUserId == null || _isUserIdLoading) ? Colors.grey : Colors.white,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
@@ -752,9 +864,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         ),
                       ],
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.send,
-                      color: Colors.lightBlue,
+                      color: (_currentUserId == null || _isUserIdLoading) ? Colors.white : Colors.lightBlue,
                       size: 24,
                     ),
                   ),

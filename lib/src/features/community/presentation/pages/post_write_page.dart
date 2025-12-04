@@ -1,13 +1,12 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer';
+// 💡 [추가] Provider와 DioException 사용을 위한 임포트
 import 'package:flutter/material.dart';
-// http는 이제 UI 계층에서 직접적으로 사용되지 않지만,
-// PerformanceService 내에서는 여전히 사용됩니다. (코드 일관성을 위해 여기서는 제거)
-// import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// 💡 [임포트 추가] 서비스 계층
+// 💡 [임포트 유지] 서비스 계층
 import 'package:cultureyo/src/features/community/service/post_service.dart';
 import 'package:cultureyo/src/features/community/service/performance_service.dart';
 
@@ -61,9 +60,18 @@ class _PostWritePageState extends State<PostWritePage> {
 
   Timer? _debounce;
 
-  // 💡 [서비스 인스턴스]
-  final PostService _postService = PostService();
-  final PerformanceService _performanceService = PerformanceService();
+  // 💡 [변경] 서비스 인스턴스를 Provider로 주입받을 변수로 선언
+  late PostService _postService;
+  late PerformanceService _performanceService;
+
+  // 💡 [추가] Service 인스턴스를 context를 통해 가져오는 메서드
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // context.read를 사용하여 Service 인스턴스를 가져옵니다.
+    _postService = context.read<PostService>();
+    _performanceService = context.read<PerformanceService>();
+  }
 
   // 선택된 장르에 따라 idxName을 결정하는 헬퍼 함수
   String _getIdxName(String selectedGenre) {
@@ -110,7 +118,7 @@ class _PostWritePageState extends State<PostWritePage> {
       "userId": currentUserId, // 테스트 userId 반영
       "area": detail.area ?? '지역 미정',
       "genre": finalGenre, // 최종 결정된 장르 값 사용
-      "content": contentController.text, // content -> context로 필드명 변경
+      "content": contentController.text, // content -> context로 필드명 변경 (원래 로직 유지)
       "url": performanceUrl,
       "tap": widget.category,
     };
@@ -126,22 +134,25 @@ class _PostWritePageState extends State<PostWritePage> {
           );
           Navigator.pop(context);
         } else {
+          // 서버에서 null을 반환한 경우 (일반적이지 않은 응답)
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('게시물 작성 실패: 서버 응답 오류가 발생했습니다.')),
           );
         }
       }
-    } on TimeoutException {
+    } on DioException catch (e) { // 💡 [추가] DioException 처리
+      log('🚨 [게시물 작성 Dio 에러] ${e.message}', name: 'POST_WRITE');
       if (mounted) {
+        final errorMessage = e.response?.data['message']?.toString() ?? e.message;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('게시물 작성 요청 시간이 초과되었습니다. 서버 상태를 확인해주세요.')),
+          SnackBar(content: Text('게시물 작성 중 오류가 발생했습니다: $errorMessage')),
         );
       }
     } catch (e) {
-      // PostService에서 throw된 Exception 처리
-      log('🚨 [게시물 작성 에러] Exception: $e', name: 'POST_WRITE');
+      // PostService에서 throw된 일반 Exception 처리
+      log('🚨 [게시물 작성 일반 에러] Exception: $e', name: 'POST_WRITE');
       if (mounted) {
-        // 간결한 오류 메시지 추출
+        // 간결한 오류 메시지 추출 (기존 로직 유지)
         final errorMessage = e.toString().contains(':') ? e.toString().split(':')[1].trim() : '네트워크 오류';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('게시물 작성 중 오류가 발생했습니다: $errorMessage')),
@@ -215,19 +226,20 @@ class _PostWritePageState extends State<PostWritePage> {
           errorMessage = "해당 조건에 맞는 공연이 없습니다.";
         }
 
-        // 검색 필터링 로직은 UI 계층(Modal)에서 처리
+        // 검색 필터링 로직은 UI 계층(Modal)에서 처리 (로직 유지)
         if (modalSearch.isNotEmpty) {
           performanceList = performanceList
               .where((item) => item['title'].contains(modalSearch))
               .toList();
         }
 
-      } on TimeoutException {
+      } on DioException catch (e) { // 💡 [추가] DioException 처리
         performanceList = [];
-        errorMessage = "서버 응답 시간 초과";
+        errorMessage = "공연 목록 조회 오류: ${e.message}";
+        log('🚨 [API_ERROR] DioException: $e', name: 'PERFORMANCE_FETCH');
       } catch (e) {
         performanceList = [];
-        // Service에서 발생한 Exception 메시지를 사용
+        // Service에서 발생한 Exception 메시지를 사용 (기존 로직 유지)
         final errorDetail = e.toString().contains(':') ? e.toString().split(':')[1].trim() : '네트워크 오류';
         errorMessage = "공연 목록 조회 오류: $errorDetail";
         log('🚨 [API_ERROR] Exception: $e', name: 'PERFORMANCE_FETCH');
@@ -290,6 +302,7 @@ class _PostWritePageState extends State<PostWritePage> {
                                       setModalState(() {
                                         modalRegion = region;
                                       });
+                                      // 💡 [수정] 지역/장르 선택 후 검색어는 유지하고 목록만 새로고침
                                       fetchPerformances();
                                     }
                                   },
@@ -337,6 +350,7 @@ class _PostWritePageState extends State<PostWritePage> {
                                       setModalState(() {
                                         modalGenre = genre;
                                       });
+                                      // 💡 [수정] 지역/장르 선택 후 검색어는 유지하고 목록만 새로고침
                                       fetchPerformances();
                                     }
                                   },
@@ -380,6 +394,7 @@ class _PostWritePageState extends State<PostWritePage> {
                                   _debounce!.cancel();
                                 _debounce = Timer(
                                     const Duration(milliseconds: 400), () {
+                                  // 💡 [수정] 디바운스 후 목록 새로고침
                                   fetchPerformances();
                                 });
                               },
@@ -504,11 +519,12 @@ class _PostWritePageState extends State<PostWritePage> {
             selectedPerformanceDetail = detail; // 상세 모델 저장
           });
         }
-      } on TimeoutException {
-        log('API 호출 에러: 상세 정보 요청 시간 초과', name: 'API_CHECK');
+      } on DioException catch (e) { // 💡 [추가] DioException 처리
+        log('API 호출 에러: DioException - ${e.message}', name: 'API_CHECK');
         if (mounted) {
+          final errorDetail = e.response?.data['message']?.toString() ?? e.message;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('공연 상세 정보 조회 시간이 초과되었습니다.')),
+            SnackBar(content: Text('공연 상세 정보 조회 오류: $errorDetail')),
           );
         }
       } catch (e) {

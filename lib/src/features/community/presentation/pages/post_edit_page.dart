@@ -1,17 +1,17 @@
 // lib/src/features/community/presentation/pages/post_edit_page.dart
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart'; // 💡 [추가] Provider 사용을 위한 임포트
+import 'package:dio/dio.dart'; // 💡 [추가] DioException 처리를 위한 임포트
+// http 임포트는 제거되었습니다 (Service 계층으로 이동)
+// import 'package:http/http.dart' as http;
 import 'package:cultureyo/src/features/community/data/post_model.dart';
 import 'package:url_launcher/url_launcher.dart';
 // PostService 추가
 import 'package:cultureyo/src/features/community/service/post_service.dart';
 
-// PostWritePage에서 사용하던 Performance 모델은 불필요하지만,
-// 기존 코드를 단순화하기 위해 주석 처리하고 필요한 필드만 사용합니다.
 
 class PostEditPage extends StatefulWidget {
   final Post postToEdit; // 수정할 기존 게시물 데이터
@@ -32,14 +32,23 @@ class _PostEditPageState extends State<PostEditPage> {
   // 💡 [테스트용] 현재 사용자 ID 정의 (API 요청에 필요)
   final String _currentUserId = 'testUser123';
 
-  // ⭐ [추가됨] PostService 인스턴스
-  final PostService _postService = PostService();
+  // ⭐ [변경] PostService 인스턴스를 Provider로 주입받을 변수로 선언
+  late PostService _postService;
 
   @override
   void initState() {
     super.initState();
     _initializeData();
   }
+
+  // 💡 [추가] Service 인스턴스를 context를 통해 가져오는 메서드
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // context.read를 사용하여 Service 인스턴스를 가져옵니다.
+    _postService = context.read<PostService>();
+  }
+
 
   // ⭐ [새 로직] 기존 게시물 데이터를 폼에 채우기
   void _initializeData() {
@@ -66,7 +75,7 @@ class _PostEditPageState extends State<PostEditPage> {
     final String postId = widget.postToEdit.id;
     final String category = widget.postToEdit.category;
 
-    // 💡 [수정] http 통신 로직 제거 및 PostService 호출로 대체
+    // 💡 [수정] DioException 처리 로직으로 변경
     try {
       final success = await _postService.modifyPost(
         postId,
@@ -88,17 +97,23 @@ class _PostEditPageState extends State<PostEditPage> {
       } else {
         // 실패는 Service 내부에서 로그 처리됨. 여기서는 사용자에게 알림
         ScaffoldMessenger.of(currentContext).showSnackBar(
-          const SnackBar(content: Text('게시물 수정에 실패했습니다 (서버 오류)')),
+          const SnackBar(content: Text('게시물 수정에 실패했습니다 (서버 응답 오류)')),
         );
       }
-    } on TimeoutException {
+    } on DioException catch (e) { // 💡 [추가] DioException 처리
+      log('🚨 [게시물 수정 Dio 에러] ${e.message}', name: 'POST_EDIT');
+      if (!mounted) return;
+      // 서버에서 전달된 메시지가 있다면 사용, 없다면 Dio 에러 메시지 사용
+      final errorMessage = e.response?.data['message']?.toString() ?? e.message;
       ScaffoldMessenger.of(currentContext).showSnackBar(
-        const SnackBar(content: Text('게시물 수정 요청 시간이 초과되었습니다.')),
+        SnackBar(content: Text('게시물 수정 중 오류 발생: $errorMessage')),
       );
     } catch (e) {
-      // Service 내부에서 에러 로그가 찍히므로, 여기서는 사용자에게 네트워크 오류만 알림
+      // Service 내부에서 에러 로그가 찍히므로, 여기서는 사용자에게 네트워크 오류만 알림 (기존 로직 유지)
+      log('🚨 [게시물 수정 일반 에러] Exception: $e', name: 'POST_EDIT');
+      if (!mounted) return;
       ScaffoldMessenger.of(currentContext).showSnackBar(
-        const SnackBar(content: Text('게시물 수정 중 네트워크 연결 오류가 발생했습니다.')),
+        const SnackBar(content: Text('게시물 수정 중 예상치 못한 연결 오류가 발생했습니다.')),
       );
     }
   }

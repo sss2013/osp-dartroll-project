@@ -1,10 +1,10 @@
-// lib/src/features/community/presentation/pages/board_page.dart (수정된 코드)
+// lib/src/features/community/presentation/pages/board_page.dart
 
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
-// import 'package:http/http.dart' as http; // 기존 http import는 제거 (PostService로 이동)
-// import 'dart:convert'; // 기존 dart:convert import 제거 (PostService로 이동)
+import 'package:provider/provider.dart'; // 💡 [추가] Provider 사용을 위해 임포트
+import 'package:dio/dio.dart'; // 💡 [추가] DioException 처리를 위해 임포트
 
 // ⭐ [추가] PostService import
 import 'package:cultureyo/src/features/community/service/post_service.dart';
@@ -24,8 +24,8 @@ class BoardPage extends StatefulWidget {
 class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // ⭐ [추가] PostService 인스턴스 생성
-  final PostService _postService = PostService();
+  // 💡 [변경] PostService 인스턴스를 직접 생성하지 않고, Provider로 주입받을 변수로 선언
+  late PostService _postService;
 
   String selectedRegion = '전체';
   String selectedGenre = '전체';
@@ -59,7 +59,21 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
       }
     });
 
-    _fetchPosts();
+    // 🚨 [변경] _fetchPosts()를 initState에서 제거하고 didChangeDependencies()로 옮김
+    // _fetchPosts();
+  }
+
+  // 💡 [추가] Service 인스턴스를 context를 통해 가져오는 메서드
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // context.read를 사용하여 Service 인스턴스를 가져옵니다.
+    _postService = context.read<PostService>();
+
+    // 최초 목록 로드 실행 (initState의 역할을 대신)
+    if (posts.isEmpty && !isLoading) {
+      _fetchPosts();
+    }
   }
 
   @override
@@ -68,12 +82,11 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     super.dispose();
   }
 
-  // ----------------------------------------------------
-  // ⭐ [제거됨] _increaseViewCount 함수가 PostService로 이동
-  // ----------------------------------------------------
-
-  // ⭐ [수정] _fetchPosts 함수가 PostService 호출로 변경
+  // ⭐ [수정] _fetchPosts 함수: DioException 처리 구조 추가
   Future<void> _fetchPosts() async {
+    // 💡 _postService가 초기화되지 않았다면 바로 리턴 (안전 장치)
+    if (!mounted || _postService == null) return;
+
     setState(() {
       isLoading = true;
     });
@@ -87,11 +100,21 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
       final fetchedPosts = await _postService.fetchPosts(category);
 
       setState(() {
-        // 서비스에서 반환된 List<Post>를 그대로 사용
         posts = fetchedPosts;
         isLoading = false;
       });
 
+    } on DioException catch (e) { // 💡 [추가] DioException 처리
+      log('🚨 [DIO_ERROR] Failed to fetch posts: ${e.message}', name: 'BOARD_PAGE');
+      if(mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('게시물 로드 실패: ${e.message}')),
+        );
+      }
+      setState(() {
+        posts = [];
+        isLoading = false;
+      });
     } catch (e) {
       log('🚨 [SERVICE_ERROR] Failed to fetch posts: $e', name: 'BOARD_PAGE');
       setState(() {
@@ -383,17 +406,29 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
         final post = posts[index];
         return GestureDetector(
           onTap: () async {
-            // 1. ⭐ [수정] PostService의 increaseViewCount 함수 호출
-            await _postService.increaseViewCount(post.id, post.category);
+            try {
+              // 1. ⭐ [수정] PostService의 increaseViewCount 함수 호출 (Dio/Provider 사용)
+              await _postService.increaseViewCount(post.id, post.category);
 
-            // 2. 상세 페이지로 이동하며 복귀를 기다림 (await)
-            await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => PostDetailPage(post: post)),
-            );
+              // 2. 상세 페이지로 이동하며 복귀를 기다림 (await)
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => PostDetailPage(post: post)),
+              );
 
-            // 3. 상세 페이지에서 돌아왔을 때 목록을 새로고침하여 조회수 갱신
-            _fetchPosts();
+              // 3. 상세 페이지에서 돌아왔을 때 목록을 새로고침하여 조회수 갱신
+              _fetchPosts();
+
+            } on DioException catch (e) {
+              log('🚨 [DIO_ERROR] Failed to increase view count: ${e.message}', name: 'BOARD_PAGE_VIEW');
+              if(mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('조회수 증가 실패: ${e.message}')),
+                );
+              }
+            } catch (e) {
+              log('🚨 [SERVICE_ERROR] Failed to increase view count: $e', name: 'BOARD_PAGE_VIEW');
+            }
           },
           child: Container(
             margin: const EdgeInsets.symmetric(vertical: 4),

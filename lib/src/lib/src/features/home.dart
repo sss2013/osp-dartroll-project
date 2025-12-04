@@ -8,11 +8,8 @@ import 'package:cultureyo/src/features/community/presentation/pages/chat_page.da
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
-
-
-/// ----------------
 /// MainScreen (탭 관리)
-/// ----------------
+
 class MainScreen extends StatefulWidget {
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -91,28 +88,55 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 }
-/// ----------------
-/// HomePage (이미지 포함 리스트 스타일 및 정렬 개선)
-/// ----------------
+
+/// HomePage
 class HomePage extends StatefulWidget {
   @override
   _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  // 추천 이벤트 3개 목록 (더미 데이터)
-  List<Map<String, String>> upcomingEvents = [
-    {"title": "2025 서울 불꽃 축제", "location": "여의도 한강공원", "date": "2025.10.10 ~ 2025.10.10"},
-    {"title": "겨울 빛 축제", "location": "에버랜드", "date": "2025.12.01 ~ 2026.02.28"},
-    {"title": "전국 푸드 페스티벌", "location": "코엑스", "date": "2025.11.20 ~ 2025.11.24"},
-  ];
+  List<Event> upcomingEvents = [];
   bool isLoading = false;
   String? loadError;
 
   @override
+  void initState() {
+    super.initState();
+    _loadRandomEvents();
+  }
+
+  Future<void> _loadRandomEvents() async {
+    setState(() {
+      isLoading = true;
+      loadError = null;
+    });
+
+    try {
+      final allEvents = await EventApiService.postGetEvents(
+        area: "서울",
+        genre: "전시",
+      );
+
+      allEvents.shuffle();
+
+      setState(() {
+        upcomingEvents = allEvents.take(3).toList();
+      });
+    } catch (e) {
+      setState(() {
+        loadError = "이벤트 로딩 실패";
+      });
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context).size;
-    // 최대 너비를 600.0으로 설정하고 중앙 정렬 유지
     final cardMaxWidth = mq.width > 600 ? 600.0 : mq.width;
 
     return Scaffold(
@@ -134,7 +158,8 @@ class _HomePageState extends State<HomePage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 15),
-                // 검색 버튼 (Padding 16.0 통일)
+
+                /// 지역 검색 버튼
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: ElevatedButton(
@@ -149,57 +174,170 @@ class _HomePageState extends State<HomePage> {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text("공연/행사 지역별 검색",
-                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      "공연/행사 지역별 검색",
+                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
+
                 const SizedBox(height: 25),
 
-                // 제목 (Padding 16.0 통일)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                /// 인기 이벤트 타이틀
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0),
                   child: Text(
                     "🔥 인기 이벤트",
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                 ),
+
                 const SizedBox(height: 12),
 
                 if (isLoading)
-                  const Center(child: Padding(
+                  const Padding(
                     padding: EdgeInsets.all(20.0),
-                    child: CircularProgressIndicator(color: Colors.lightBlue),
-                  )),
+                    child: Center(
+                      child: CircularProgressIndicator(color: Colors.lightBlue),
+                    ),
+                  ),
 
                 if (!isLoading && loadError != null)
-                  Center(child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Text("❌ 이벤트 로드 오류", style: TextStyle(color: Colors.red)),
-                  )),
-
-                // 추천 이벤트 3개 표시 (이미지+텍스트 리스트 스타일 적용)
-                if (!isLoading && loadError == null && upcomingEvents.isNotEmpty)
-                  ...upcomingEvents.take(3).map((event) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Column(
-                      children: [
-                        _eventBox(
-                          title: event['title']!,
-                          location: event['location']!,
-                          date: event['date']!,
-                        ),
-                        const SizedBox(height: 10),
-                      ],
+                  const Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: Center(
+                      child: Text("❌ 이벤트 로드 오류", style: TextStyle(color: Colors.red)),
                     ),
-                  )).toList(),
+                  ),
+
+                /// 랜덤 3개 카드
+                if (!isLoading && loadError == null && upcomingEvents.isNotEmpty)
+                  ...upcomingEvents.map((e) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6),
+                    child: GestureDetector(
+                      onTap: () async {
+                        final parts = e.id.split(':');
+                        final contentId = parts.length > 1 ? parts[1] : e.id;
+
+                        final detail = await EventApiService.postGetEventDetail(
+                          contentId: contentId,
+                        );
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => EventDetailPage(detail: detail),
+                          ),
+                        );
+                      },
+                      child: Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              /// 썸네일 이미지
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: e.thumbnail.isNotEmpty
+                                    ? Image.network(
+                                  e.thumbnail,
+                                  width: 90,
+                                  height: 90,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    width: 90,
+                                    height: 90,
+                                    color: Colors.grey[300],
+                                    child: const Icon(Icons.image_not_supported),
+                                  ),
+                                )
+                                    : Container(
+                                  width: 90,
+                                  height: 90,
+                                  color: Colors.grey[300],
+                                  child: const Icon(Icons.image_not_supported),
+                                ),
+                              ),
+
+                              const SizedBox(width: 14),
+                              
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      e.title,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      e.place,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(color: Colors.black54),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "${e.startDate} ~ ${e.endDate}",
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(color: Colors.black45, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  )),
 
                 if (!isLoading && loadError == null && upcomingEvents.isEmpty)
-                  Center(child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Text("🎉 현재 예정된 공연/행사가 없습니다.", style: TextStyle(color: Colors.grey[600])),
-                  )),
+                  const Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: Center(
+                      child: Text(
+                        "🎉 현재 예정된 공연/행사가 없습니다.",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Container(
+                    height: 120,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      gradient: const LinearGradient(
+                        colors: [Colors.lightBlue, Colors.blueAccent],
+                      ),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        "광고 배너 영역",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 30),
               ],
             ),
           ),
@@ -207,58 +345,10 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
-  // RegionSelectPage의 _eventCard와 유사하게 이미지/텍스트가 정렬된 리스트 스타일로 변경
-  Widget _eventBox({required String title, required String location, required String date}) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      elevation: 2,
-      child: InkWell(
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("지역 검색 페이지를 이용해 주세요.")),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // 썸네일 이미지 영역 (더미 아이콘 사용)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  width: 60,
-                  height: 60,
-                  color: Colors.lightBlue.withOpacity(0.1),
-                  child: Icon(Icons.celebration, color: Colors.lightBlue, size: 30),
-                ),
-              ),
-              const SizedBox(width: 12),
-
-              // 텍스트 정보 영역
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text(location, style: const TextStyle(color: Colors.black54, fontSize: 13)),
-                    const SizedBox(height: 2),
-                    Text(date, style: const TextStyle(color: Colors.black45, fontSize: 12)),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Colors.grey),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
-/// ----------------
+
 /// RegionSelectPage
-/// ----------------
+
 class RegionSelectPage extends StatefulWidget {
   @override
   _RegionSelectPageState createState() => _RegionSelectPageState();
@@ -499,9 +589,9 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
     );
   }
 }
-/// ----------------
+
 /// Models & API Service (POST JSON)
-/// ----------------
+
 class Event {
   final String id;
   final String area;
@@ -704,7 +794,6 @@ class EventDetailPage extends StatelessWidget {
 
     return "$y년 $m월 $d일";
   }
-
 
   Future<void> _launchUrl(String url) async {
     final uri = Uri.parse(url);
@@ -1024,7 +1113,7 @@ Widget _accountItem(String title, String value) {
 }
 
 /// ProfilePage
-/// ----------------
+
 class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {

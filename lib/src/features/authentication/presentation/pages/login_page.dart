@@ -1,4 +1,12 @@
+import 'package:cultureyo/src/features/authentication/domain/usecases/auth_manager.dart';
+import 'package:cultureyo/src/features/profile/usecases/name_input_page.dart';
+import 'package:cultureyo/src/features/profile/usecases/user_info.dart';
+import 'package:cultureyo/src/features/home.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+enum Auth { naver, kakao }
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -8,9 +16,59 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  bool _loading = false;
+
+  Future<void> _handleLoginResult(
+      BuildContext context, AuthManager authManager, bool success) async {
+    if (!mounted) return;
+    setState(() => _loading = false);
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('서버 로그인 처리에 실패했습니다. 다시 시도해주세요')));
+      return;
+    }
+
+    try {
+      final inputResult = await authManager.checkInput();
+      if (!mounted) return;
+
+      if (inputResult) {
+        Navigator.pushAndRemoveUntil(context,
+            MaterialPageRoute(builder: (_) => MainScreen()), (route) => false);
+      } else {
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => const NameInputPage()));
+      }
+    } catch (e) {
+      if (kDebugMode) print('checkInput 중 에러 : $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('처리 중 오류가 발생했습니다')),
+      );
+    }
+  }
+
+  Future<void> _onPressed(AuthManager authManager, Auth provider) async {
+    if (_loading) return;
+    setState(() => _loading = true);
+
+    try {
+      bool success = false;
+      if (provider == Auth.kakao) {
+        success = await authManager.signInWithKakao();
+      } else {
+        success = await authManager.signInWithNaver();
+      }
+      await _handleLoginResult(context, authManager, success);
+    } catch (e) {
+      if (kDebugMode) print('로그인 중 에러: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final authManager = context.read<AuthManager>();
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
@@ -39,7 +97,9 @@ class _LoginPageState extends State<LoginPage> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: _loading
+                      ? null
+                      : () => _onPressed(authManager, Auth.kakao),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFEE500),
                     shape: RoundedRectangleBorder(
@@ -77,7 +137,9 @@ class _LoginPageState extends State<LoginPage> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: _loading
+                      ? null
+                      : () => _onPressed(authManager, Auth.naver),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF03C75A),
                     shape: RoundedRectangleBorder(

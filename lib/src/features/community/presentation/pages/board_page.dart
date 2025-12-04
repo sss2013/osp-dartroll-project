@@ -1,13 +1,15 @@
-// lib/src/features/community/presentation/pages/board_page.dart
+// lib/src/features/community/presentation/pages/board_page.dart (수정된 코드)
 
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
-// ⭐️ [변경] http 대신 Provider와 PostService를 사용합니다.
-import 'package:provider/provider.dart';
-import 'package:dio/dio.dart'; // ⭐️ DioException 처리를 위해 Dio import
+// import 'package:http/http.dart' as http; // 기존 http import는 제거 (PostService로 이동)
+// import 'dart:convert'; // 기존 dart:convert import 제거 (PostService로 이동)
+
+// ⭐ [추가] PostService import
+import 'package:cultureyo/src/features/community/service/post_service.dart';
 import 'package:cultureyo/src/features/community/data/post_model.dart';
-import 'package:cultureyo/src/features/community/service/post_service.dart'; // ⭐️ PostService Import
+
 import 'post_detail_page.dart';
 import 'post_write_page.dart';
 import '../../../home.dart';
@@ -21,7 +23,9 @@ class BoardPage extends StatefulWidget {
 
 class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  // ⭐️ PostService 인스턴스는 initState에서 가져오거나 빌드 메서드에서 context.read를 사용합니다.
+
+  // ⭐ [추가] PostService 인스턴스 생성
+  final PostService _postService = PostService();
 
   String selectedRegion = '전체';
   String selectedGenre = '전체';
@@ -51,18 +55,11 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
         setState(() {
           currentPage = 1;
         });
-        // ⭐️ initState에서는 context를 사용할 수 없으므로, post-frame 콜백을 사용합니다.
-        // 또는 didChangeDependencies에서 호출해야 하지만, 간단하게 post-frame 콜백을 사용합니다.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _fetchPosts();
-        });
+        _fetchPosts();
       }
     });
 
-    // ⭐️ 초기 로드도 post-frame 콜백으로 이동 (context 사용 가능 보장)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchPosts();
-    });
+    _fetchPosts();
   }
 
   @override
@@ -71,56 +68,32 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     super.dispose();
   }
 
-  // ⭐️ [수정] 조회수 증가 API 호출 함수: PostService 사용
-  Future<void> _increaseViewCount(String postId, String category) async {
-    // context를 통해 PostService 인스턴스를 가져옵니다.
-    final postService = context.read<PostService>();
+  // ----------------------------------------------------
+  // ⭐ [제거됨] _increaseViewCount 함수가 PostService로 이동
+  // ----------------------------------------------------
 
-    try {
-      // ⭐️ PostService의 increaseViewCount 메서드를 호출하여 로직 대체
-      await postService.increaseViewCount(postId, category);
-      // 서비스 내부에서 이미 로깅이 수행됩니다.
-
-    } on DioException catch (e) {
-      log('🚨 [SERVICE_ERROR] Failed to increase view count: ${e.message}', name: 'BOARD_PAGE_VIEW');
-    } catch (e) {
-      log('🚨 [API_EXCEPTION] Error increasing view count: $e', name: 'BOARD_PAGE_VIEW');
-    }
-  }
-
-  // ⭐️ [수정] 게시글 목록 조회 API 호출 함수: PostService 사용
+  // ⭐ [수정] _fetchPosts 함수가 PostService 호출로 변경
   Future<void> _fetchPosts() async {
-    // context를 통해 PostService 인스턴스를 가져옵니다.
-    final postService = context.read<PostService>();
-
     setState(() {
       isLoading = true;
     });
 
     final String category = _tabController.index == 0 ? 'review' : 'matching';
 
-    log('🔍 [SERVICE_REQUEST] Fetching posts for tap=$category', name: 'BOARD_PAGE');
+    log('🔍 [CALL_SERVICE] Fetching posts for category: $category', name: 'BOARD_PAGE');
 
     try {
-      // ⭐️ PostService의 fetchPosts 메서드를 호출하여 로직 대체
-      final fetchedPosts = await postService.fetchPosts(category);
+      // ⭐ PostService의 fetchPosts 함수 호출
+      final fetchedPosts = await _postService.fetchPosts(category);
 
       setState(() {
+        // 서비스에서 반환된 List<Post>를 그대로 사용
         posts = fetchedPosts;
         isLoading = false;
       });
-      log('✅ [SERVICE_SUCCESS] Posts fetched successfully.', name: 'BOARD_PAGE');
 
-    } on DioException catch (e) {
-      log('🚨 [SERVICE_ERROR] DioException fetching posts: ${e.message}', name: 'BOARD_PAGE');
-      _showSnackbar('게시글 목록 로드 실패: ${e.message}');
-      setState(() {
-        posts = [];
-        isLoading = false;
-      });
     } catch (e) {
-      log('🚨 [API_EXCEPTION] Unknown Error: $e', name: 'BOARD_PAGE');
-      _showSnackbar('게시글 로드 중 알 수 없는 오류 발생');
+      log('🚨 [SERVICE_ERROR] Failed to fetch posts: $e', name: 'BOARD_PAGE');
       setState(() {
         posts = [];
         isLoading = false;
@@ -128,22 +101,12 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     }
   }
 
-  // ⭐️ [추가] SnackBar 헬퍼 함수 (PostDetailPage에서 가져옴)
-  void _showSnackbar(String message, {Duration duration = const Duration(seconds: 4)}) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: duration,
-        ),
-      );
-    }
-  }
+  // ----------------------------------------------------
+  // [유지] 기존 로컬 필터링, 페이지네이션, 지역/장르 선택, UI 구성 로직은 그대로 유지
+  // ----------------------------------------------------
 
-
-  // 기존 로컬 필터링 로직 유지 (받아온 API 데이터를 기준으로 필터링)
   List<Post> _filteredPosts(String category) {
-    // 💡 장르 리스트가 수정되었으므로, 이 로직은 자동으로 '행사/축제', '교육/체험'에 대한 필터링을 지원합니다.
+    // ... 로직 유지 ...
     final filtered = posts.where((post) {
       final regionMatch =
           selectedRegion == '전체' || post.region == selectedRegion;
@@ -176,6 +139,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   }
 
   Future<void> _selectRegion() async {
+    // ... 로직 유지 ...
     final region = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
@@ -198,6 +162,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   }
 
   Future<void> _selectGenre() async {
+    // ... 로직 유지 ...
     final genre = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
@@ -243,6 +208,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    // ... build 로직 유지 ...
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -368,6 +334,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   }
 
   Widget _buildPostList(String category) {
+    // ... _buildPostList 로직 유지 ...
     final posts = _filteredPosts(category);
     final totalPages = (_getFilteredCount(category) / postsPerPage).ceil();
 
@@ -416,9 +383,8 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
         final post = posts[index];
         return GestureDetector(
           onTap: () async {
-            // 1. 조회수 증가 API 호출
-            // ⭐️ [변경] Service 호출
-            await _increaseViewCount(post.id, post.category);
+            // 1. ⭐ [수정] PostService의 increaseViewCount 함수 호출
+            await _postService.increaseViewCount(post.id, post.category);
 
             // 2. 상세 페이지로 이동하며 복귀를 기다림 (await)
             await Navigator.push(

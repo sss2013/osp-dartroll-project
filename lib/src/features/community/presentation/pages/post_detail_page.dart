@@ -1,244 +1,211 @@
+// lib/src/features/community/presentation/pages/post_detail_page.dart
+
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:dio/dio.dart'; // DioException 처리를 위해 필요
 import 'package:cultureyo/src/features/community/data/post_model.dart';
-import 'package:cultureyo/src/features/community/data/comment_model.dart';
-import 'package:cultureyo/src/features/community/service/post_service.dart';
-import 'package:cultureyo/src/features/community/service/comment_service.dart';
-import 'package:cultureyo/src/features/authentication/domain/usecases/auth_manager.dart'; // AuthManager import
+import 'package:cultureyo/src/features/community/presentation/pages/post_edit_page.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'post_edit_page.dart';
+import 'package:cultureyo/src/features/community/data/comment_model.dart';
+import 'package:cultureyo/src/features/community/service/comment_service.dart';
+import 'package:cultureyo/src/features/community/service/post_service.dart'; // PostService 추가
+
 
 class PostDetailPage extends StatefulWidget {
   final Post post;
 
-  const PostDetailPage({super.key, required this.post});
+  const PostDetailPage({Key? key, required this.post}) : super(key: key);
 
   @override
   State<PostDetailPage> createState() => _PostDetailPageState();
 }
 
 class _PostDetailPageState extends State<PostDetailPage> {
-  late Post _currentPost;
-  List<Comment> _comments = [];
-  bool _isLoadingComments = false;
+  late int likes;
   final TextEditingController _commentController = TextEditingController();
+  final FocusNode _commentFocusNode = FocusNode();
 
-  // ⭐️ [변경] PostService와 CommentService 인스턴스를 저장할 변수
-  late PostService _postService;
-  late CommentService _commentService;
-  late AuthManager _authManager;
+  List<Comment> _comments = [];
+  bool _isLoadingComments = true;
+
+  // 💡 [테스트용] 현재 사용자 ID 정의
+  final String _currentUserId = 'testUser123';
+  final CommentService _commentService = CommentService();
+  final PostService _postService = PostService(); // PostService 인스턴스 추가
 
   String? _replyingToCommentId;
-  String? _replyingToAuthor;
+  String _commentHintText = '댓글을 입력하세요...';
 
-  // 💡 [변경] 인증된 사용자의 ID를 가져올 변수
-  String _currentUserId = 'anonymous_user';
+  // ⭐ [추가된 로직] 현재 사용자가 게시물 작성자인지 확인하는 Getter
+  bool get _isAuthor {
+    return _currentUserId == widget.post.authorId;
+  }
+  // ==========================================================
+
 
   @override
   void initState() {
     super.initState();
-    _currentPost = widget.post;
-
-    // ⭐️ Post-frame callback에서 서비스 초기화 및 데이터 로드
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeServices();
-      _fetchComments();
-    });
+    likes = widget.post.likes;
+    _fetchComments();
   }
-
-  // ⭐️ [추가] Provider를 통해 서비스 인스턴스를 초기화하는 함수
-  void _initializeServices() {
-    _postService = context.read<PostService>();
-    _commentService = context.read<CommentService>();
-    _authManager = context.read<AuthManager>();
-
-    // AuthManager에서 현재 로그인된 사용자 ID를 가져옴 (로그인 상태를 가정)
-    // AuthManager에 currentUser getter가 있고, 그 안에 userId 속성이 있다고 가정합니다.
-    _currentUserId = _authManager.currentUser?.userId ?? 'anonymous_user';
-    log('✅ Current User ID initialized: $_currentUserId', name: 'POST_DETAIL_AUTH');
-  }
-
 
   @override
   void dispose() {
     _commentController.dispose();
+    _commentFocusNode.dispose();
     super.dispose();
   }
 
-  // ⭐️ [수정] 댓글 목록 조회: CommentService 사용
+  void _setReplyingTo(Comment parentComment) {
+    if (!mounted) return;
+    setState(() {
+      _replyingToCommentId = parentComment.id;
+      _commentHintText = '${parentComment.authorNickname}님에게 답글을 입력하세요...';
+      _commentFocusNode.requestFocus();
+    });
+    // SnackBar 노출 시간 1.5초로 단축
+    _showSnackbar('답글 모드로 전환되었습니다.', duration: const Duration(milliseconds: 1000));
+  }
+
+  void _cancelReplying() {
+    if (!mounted) return;
+    setState(() {
+      _replyingToCommentId = null;
+      _commentHintText = '댓글을 입력하세요...';
+    });
+  }
+
+  // 댓글 계층 구조 정렬 로직 (변경 없음)
+  List<Comment> _sortCommentsByHierarchy(List<Comment> allComments) {
+    final List<Comment> sortedList = [];
+    final List<Comment> topLevelComments = allComments
+        .where((c) => c.parentId == null)
+        .toList();
+    topLevelComments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+    final Map<String, List<Comment>> repliesMap = {};
+    for (var comment in allComments.where((c) => c.parentId != null)) {
+      if (comment.parentId != null) {
+        repliesMap.putIfAbsent(comment.parentId!, () => []).add(comment);
+      }
+    }
+
+    for (var parent in topLevelComments) {
+      sortedList.add(parent);
+      final List<Comment>? replies = repliesMap[parent.id];
+      if (replies != null) {
+        replies.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        sortedList.addAll(replies);
+      }
+    }
+    return sortedList;
+  }
+
+  // ⭐ [분리 완료] 댓글 목록 조회 로직: CommentService 호출
   Future<void> _fetchComments() async {
+    if (!mounted) return;
+    _cancelReplying();
+
     setState(() {
       _isLoadingComments = true;
     });
 
     try {
-      // ⭐️ CommentService 호출로 대체
-      final fetchedComments = await _commentService.fetchComments(_currentPost.id);
+      final fetchedComments = await _commentService.fetchComments(widget.post.id);
 
-      setState(() {
-        _comments = fetchedComments;
-        _isLoadingComments = false;
-      });
-      log('✅ [COMMENTS] Fetched ${_comments.length} comments.', name: 'POST_DETAIL');
-
-    } on DioException catch (e) {
-      log('🚨 [COMMENTS_ERROR] DioException: ${e.message}', name: 'POST_DETAIL');
-      _showSnackbar('댓글 로드 실패: 네트워크 오류');
-      setState(() {
-        _isLoadingComments = false;
-        _comments = [];
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingComments = false;
+          _comments = _sortCommentsByHierarchy(fetchedComments);
+        });
+      }
+    } on TimeoutException {
+      log('🚨 [FETCH_TIMEOUT] 서버 응답 시간 초과', name: 'PAGE_FETCH');
+      _showSnackbar('댓글 목록 로딩 시간 초과');
+      if (mounted) setState(() => _isLoadingComments = false);
     } catch (e) {
-      log('🚨 [COMMENTS_ERROR] Unknown Exception: $e', name: 'POST_DETAIL');
-      _showSnackbar('댓글 로드 중 알 수 없는 오류 발생');
-      setState(() {
-        _isLoadingComments = false;
-      });
+      log('🚨 [FETCH_ERROR] Exception: $e', name: 'PAGE_FETCH');
+      _showSnackbar('댓글 로딩 중 네트워크 오류 발생');
+      if (mounted) setState(() => _isLoadingComments = false);
     }
   }
 
-  // ⭐️ [수정] 댓글/답글 작성: CommentService 사용
-  Future<void> _submitComment() async {
-    final text = _commentController.text.trim();
-    if (text.isEmpty) {
-      _showSnackbar('댓글 내용을 입력해주세요.');
+  // ⭐ [분리 완료] 댓글 작성/답글 작성 로직: CommentService 호출
+  Future<void> _submitCommentApi() async {
+    final String commentText = _commentController.text.trim();
+    final String? parentId = _replyingToCommentId;
+
+    if (commentText.isEmpty) {
+      _showSnackbar('내용을 입력해주세요.',duration: const Duration(milliseconds: 1000));
       return;
     }
 
     try {
-      // ⭐️ CommentService 호출로 대체
       final success = await _commentService.submitComment(
-        _currentPost.id,
-        _currentUserId, // AuthManager에서 가져온 사용자 ID 사용
-        text,
-        parentId: _replyingToCommentId,
+        widget.post.id,
+        _currentUserId,
+        commentText,
+        parentId: parentId,
       );
 
       if (success) {
+        _showSnackbar(parentId != null ? '답글이 성공적으로 작성되었습니다.' : '댓글이 성공적으로 작성되었습니다.',duration: const Duration(milliseconds: 1000));
         _commentController.clear();
-        _resetReplyState();
-        // 작성 후 댓글 목록 새로고침
-        await _fetchComments();
-        _showSnackbar(_replyingToCommentId == null ? '댓글이 작성되었습니다.' : '답글이 작성되었습니다.');
+        _cancelReplying();
+        _fetchComments();
       } else {
-        _showSnackbar('댓글 작성에 실패했습니다. (서버 오류)');
+        _showSnackbar(parentId != null ? '답글 작성 실패 (서버 오류)' : '댓글 작성 실패 (서버 오류)');
       }
-    } on DioException catch (e) {
-      log('🚨 [SUBMIT_ERROR] DioException: ${e.message}', name: 'POST_DETAIL');
-      _showSnackbar('댓글 작성 실패: ${e.message}');
+    } on TimeoutException {
+      _showSnackbar('작성 요청 시간 초과');
     } catch (e) {
-      log('🚨 [SUBMIT_ERROR] Unknown Exception: $e', name: 'POST_DETAIL');
-      _showSnackbar('댓글 작성 중 오류 발생');
+      _showSnackbar('작성 중 네트워크 오류 발생');
     }
   }
 
-  // ⭐️ [수정] 게시글 삭제: PostService 사용
-  Future<void> _deletePost() async {
-    final confirmed = await _showConfirmDialog('게시글 삭제', '정말로 이 게시글을 삭제하시겠습니까?');
-    if (!confirmed) return;
-
+  // ⭐ [분리 완료] 게시물 삭제 로직: PostService 호출
+  Future<void> _deletePostApi() async {
     try {
-      // ⭐️ PostService 호출로 대체
-      await _postService.deletePost(
-        postId: _currentPost.id,
-        category: _currentPost.category,
-      );
-
-      if (mounted) {
-        _showSnackbar('게시글이 성공적으로 삭제되었습니다.');
-        // 삭제 성공 시 게시판 목록으로 돌아감 (true를 반환하여 새로고침 유도)
-        Navigator.pop(context, true);
-      }
-    } on DioException catch (e) {
-      log('🚨 [DELETE_ERROR] DioException: ${e.message}', name: 'POST_DETAIL');
-      if (e.response?.statusCode == 403) {
-        _showSnackbar('삭제 권한이 없습니다. 작성자만 삭제할 수 있습니다.');
-      } else {
-        _showSnackbar('게시글 삭제에 실패했습니다: ${e.message}');
-      }
-    } catch (e) {
-      log('🚨 [DELETE_ERROR] Unknown Exception: $e', name: 'POST_DETAIL');
-      _showSnackbar('게시글 삭제 중 알 수 없는 오류 발생');
-    }
-  }
-
-  // ⭐️ [수정] 댓글 삭제: CommentService 사용
-  void _deleteComment(Comment comment) async {
-    final confirmed = await _showConfirmDialog('댓글 삭제', '정말로 이 댓글을 삭제하시겠습니까?');
-    if (!confirmed) return;
-
-    try {
-      // ⭐️ CommentService 호출로 대체
-      final success = await _commentService.deleteComment(
-        comment.id,
-        _currentUserId, // AuthManager에서 가져온 사용자 ID 사용
+      final success = await _postService.deletePost(
+        widget.post.id,
+        _currentUserId,
+        widget.post.category,
       );
 
       if (success) {
-        _showSnackbar('댓글이 삭제되었습니다.');
-        _fetchComments(); // 목록 새로고침
+        _showSnackbar('게시물이 성공적으로 삭제되었습니다.');
+        Navigator.pop(context, true);
       } else {
-        _showSnackbar('댓글 삭제에 실패했습니다. (서버 오류 또는 권한 없음)');
+        _showSnackbar('게시물 삭제 실패 (서버 오류)');
       }
-    } on DioException catch (e) {
-      log('🚨 [COMMENT_DELETE_ERROR] DioException: ${e.message}', name: 'POST_DETAIL');
-      _showSnackbar('댓글 삭제 실패: ${e.message}');
+    } on TimeoutException {
+      _showSnackbar('게시물 삭제 요청 시간 초과');
     } catch (e) {
-      log('🚨 [COMMENT_DELETE_ERROR] Unknown Exception: $e', name: 'POST_DETAIL');
-      _showSnackbar('댓글 삭제 중 오류 발생');
+      _showSnackbar('게시물 삭제 중 네트워크 오류 발생');
     }
   }
 
-  // --- 기존 헬퍼 함수 및 UI 로직 유지 ---
+  // ⭐ [분리 완료] 댓글 삭제 로직: CommentService 호출
+  Future<void> _deleteCommentApi(String commentId) async {
+    log('▶️ [DELETE_COMMENT_INIT] Comment ID: $commentId, User ID: $_currentUserId', name: 'UI_ACTION_DELETE');
+    try {
+      final success = await _commentService.deleteComment(commentId, _currentUserId);
 
-  void _startReply(String commentId, String author) {
-    setState(() {
-      _replyingToCommentId = commentId;
-      _replyingToAuthor = author;
-      _commentController.text = '@$author '; // 답글 대상 멘션
-    });
-    FocusScope.of(context).requestFocus(FocusNode()); // 키보드 포커스
-  }
-
-  void _resetReplyState() {
-    setState(() {
-      _replyingToCommentId = null;
-      _replyingToAuthor = null;
-    });
-  }
-
-  void _onEditPost() async {
-    // 편집 페이지로 이동 후 복귀 시 수정 여부를 받음
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PostEditPage(postToEdit: _currentPost),
-      ),
-    );
-
-    // 수정 완료 시 (result가 true일 경우) 상세 정보를 새로고침합니다.
-    if (result == true) {
-      // 💡 [개선 필요] PostService에 상세 정보를 다시 불러오는 기능이 없으므로,
-      // 현재는 수정된 내용(content)이 포함된 _currentPost 객체를 업데이트한다고 가정합니다.
-      // 실제로는 서버에서 상세 정보를 다시 받아와야 완전하지만, 현재는 UI만 업데이트합니다.
-
-      // 임시로 content만 업데이트하고 댓글 목록 새로고침
-      // (PostEditPage에서 수정된 Post 객체를 반환하도록 개선하는 것이 이상적입니다.)
-      // 하지만 현재는 Pop(true)만 하므로, API에서 다시 목록을 불러오는 방식으로 대체하거나,
-      // 여기서는 단순히 content만 임시로 업데이트합니다.
-      setState(() {
-        // 실제 앱에서는 _postService.fetchPostDetail(_currentPost.id)와 같은 API를 호출하여 최신 데이터를 가져와야 합니다.
-        // 현재는 PostEditPage에서 pop(true)만 하므로, 목록 페이지로 돌아가 새로고침하도록 유도합니다.
-      });
-      _showSnackbar('게시글 수정이 완료되었습니다. (데이터 갱신을 위해 목록 페이지에서 돌아옴)');
-      Navigator.pop(context, true); // 목록 페이지로 돌아가 새로고침하도록 유도
+      if (success) {
+        _showSnackbar('댓글이 성공적으로 삭제되었습니다.');
+        _fetchComments();
+      } else {
+        _showSnackbar('댓글 삭제 실패 (서버 오류)');
+      }
+    } on TimeoutException {
+      _showSnackbar('댓글 삭제 요청 시간 초과');
+    } catch (e) {
+      _showSnackbar('댓글 삭제 중 네트워크 오류 발생');
     }
   }
 
-  // SnackBar 헬퍼 함수
+  // ⭐ [복구] SnackBar duration 설정 가능하도록 개선
   void _showSnackbar(String message, {Duration duration = const Duration(seconds: 4)}) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -250,42 +217,39 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
-  // Custom Confirmation Dialog (alert 대신 사용)
-  Future<bool> _showConfirmDialog(String title, String content) async {
-    return await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(content),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('취소'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('확인'),
-            ),
-          ],
-        );
-      },
-    ) ?? false;
+  // ⭐ [복구] 날짜 포맷팅 헬퍼 함수
+  String _formatDate(DateTime date) {
+    return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-  // ... (기존 _buildPerformanceCard 함수는 그대로 유지) ...
-  Widget _buildPerformanceCard() {
-    final post = _currentPost;
+  // ⭐ [복구] 카테고리 박스 헬퍼 함수
+  Widget _buildCategoryBox(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.lightBlue,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(color: Colors.white, fontSize: 12),
+      ),
+    );
+  }
 
-    if (post.performanceUrl == null || post.performanceUrl!.isEmpty) {
+  // ⭐ [복구] 공연 카드 헬퍼 함수
+  Widget _buildPerformanceCard(BuildContext context) {
+    if (widget.post.performanceUrl == null || widget.post.performanceUrl!.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    final url = post.performanceUrl!;
-    final displayTitle = '이 공연에 대해 더 알고싶다면?';
+    final url = widget.post.performanceUrl!;
+    final displayTitle = (widget.post.performanceTitle != null && widget.post.performanceTitle!.isNotEmpty)
+        ? widget.post.performanceTitle!
+        : '이 공연에 대해 더 알고싶다면?';
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
       child: Card(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -317,22 +281,19 @@ class _PostDetailPageState extends State<PostDetailPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             color: Colors.blue[50],
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 const Icon(Icons.link, color: Colors.blue, size: 20),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: Flexible(
-                    child: Text(
-                      displayTitle,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                Flexible(
+                  child: Text(
+                    displayTitle,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
@@ -344,263 +305,462 @@ class _PostDetailPageState extends State<PostDetailPage> {
     );
   }
 
+  // ⭐ [복구] 댓글 아이템 빌드 헬퍼 함수
+  Widget _buildCommentItem(Comment comment) {
+    final bool isDeleted = comment.isDeleted;
+    final String displayText = isDeleted ? '삭제된 댓글입니다.' : comment.text;
+    final Color textColor = isDeleted ? Colors.grey : Colors.black;
+    final double leftPadding = comment.parentId != null ? 36.0 : 0.0;
+    final bool isReplyingToThis = _replyingToCommentId == comment.id;
+
+    return Padding(
+      padding: EdgeInsets.only(left: leftPadding, top: 6, bottom: 6),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isReplyingToThis ? Colors.yellow[50] : Colors.white,
+          border: Border.all(color: isReplyingToThis ? Colors.orange : Colors.grey[300]!),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 닉네임, 날짜
+            Row(
+              children: [
+                const CircleAvatar(
+                  radius: 18,
+                  child: Icon(Icons.person, size: 18),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    comment.authorNickname,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Text(
+                  _formatDate(comment.createdAt),
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // 내용
+            Padding(
+              padding: const EdgeInsets.only(left: 44),
+              child: Text(
+                displayText,
+                style: TextStyle(color: textColor, fontSize: 14, fontStyle: isDeleted ? FontStyle.italic : FontStyle.normal),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // 답글/추천/삭제/신고 버튼 영역
+            Padding(
+              padding: const EdgeInsets.only(left: 44),
+              child: Row(
+                children: [
+                  // 답글 작성 버튼
+                  if (!isDeleted && comment.parentId == null)
+                    TextButton(
+                      onPressed: () => _setReplyingTo(comment),
+                      child: const Text('답글 작성', style: TextStyle(fontSize: 12, color: Colors.blue)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                        minimumSize: const Size(0, 0),
+                      ),
+                    ),
+
+                  if (!isDeleted && comment.parentId == null && isReplyingToThis)
+                    const SizedBox(width: 8),
+
+                  // 답글 모드 해제 버튼
+                  if (isReplyingToThis)
+                    TextButton(
+                      onPressed: _cancelReplying,
+                      child: const Text('답글 취소', style: TextStyle(fontSize: 12, color: Colors.orange)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                        minimumSize: const Size(0, 0),
+                      ),
+                    ),
+
+                  const Spacer(),
+
+                  // 댓글 삭제 버튼
+                  if (!isDeleted && comment.userId == _currentUserId)
+                    TextButton(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: const Text("댓글 삭제"),
+                              content: const Text("이 댓글을 정말로 삭제하시겠습니까?"),
+                              actions: <Widget>[
+                                TextButton(child: const Text("취소"), onPressed: () => Navigator.of(context).pop()),
+                                TextButton(
+                                  child: const Text("삭제", style: TextStyle(color: Colors.red)),
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                    _deleteCommentApi(comment.id);
+                                  },
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                      child: const Text('삭제', style: TextStyle(fontSize: 12, color: Colors.red)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                        minimumSize: const Size(0, 0),
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+
+                  // 신고하기 버튼
+                  if (!isDeleted)
+                    TextButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.report, size: 14, color: Colors.red),
+                      label: const Text('신고하기', style: TextStyle(fontSize: 12, color: Colors.red)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                        minimumSize: const Size(0, 0),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
-    // 💡 [개선] 현재 로그인된 사용자가 작성자인지 확인
-    final isAuthor = _currentPost.authorId == _currentUserId;
-
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.lightBlue,
-        title: Text(
-          _currentPost.category == 'review' ? '리뷰 상세' : '친구 찾기 상세',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
+        elevation: 1,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            Navigator.pop(context);
+          },
         ),
-        // ⭐️ [변경] 수정/삭제 버튼을 Action으로 이동
-        actions: [
-          if (isAuthor)
-            IconButton(
-              icon: const Icon(Icons.edit, color: Colors.white),
-              onPressed: _onEditPost,
-            ),
-          if (isAuthor)
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.white),
-              onPressed: _deletePost, // ⭐️ [변경] PostService 사용
-            ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), // 댓글 입력창 공간 확보
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 게시글 정보 카드
-                Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  margin: EdgeInsets.zero,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _currentPost.title,
-                          style: const TextStyle(
-                              fontSize: 22, fontWeight: FontWeight.bold),
-                        ),
-                        const Divider(height: 20),
-                        Row(
-                          children: [
-                            Text('작성자: ${_currentPost.author}'),
-                            const Spacer(),
-                            Text(_currentPost.date.toLocal().toString().split(' ')[0]),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.remove_red_eye, size: 16),
-                                const SizedBox(width: 4),
-                                Text('${_currentPost.views}'),
-                              ],
-                            ),
-                            const SizedBox(width: 12),
-                            Row(
-                              children: [
-                                const Icon(Icons.thumb_up, size: 16),
-                                const SizedBox(width: 4),
-                                Text('${_currentPost.likes}'),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const Divider(height: 20),
-                        // 본문 내용
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          child: Text(
-                            _currentPost.content,
-                            style: const TextStyle(fontSize: 16, height: 1.5),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // 공연 상세 링크
-                _buildPerformanceCard(),
-                const SizedBox(height: 16),
-
-                // 댓글 섹션
-                Text('댓글 (${_comments.length})', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                _isLoadingComments
-                    ? const Center(child: CircularProgressIndicator())
-                    : _buildCommentList(),
-              ],
-            ),
+        title: const Text(
+          '게시글 상세',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            fontSize: 20,
           ),
-
-          // 댓글 입력창 (Positioned)
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: _buildCommentInput(),
-          ),
-        ],
+        ),
+        centerTitle: true,
       ),
-    );
-  }
-
-  Widget _buildCommentList() {
-    // 부모 댓글과 답글 분리
-    final parentComments = _comments.where((c) => c.parentId == null).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: parentComments.map((parentComment) {
-        final replies = _comments.where((c) => c.parentId == parentComment.id).toList();
-        return _buildCommentItem(parentComment, replies);
-      }).toList(),
-    );
-  }
-
-  Widget _buildCommentItem(Comment comment, List<Comment> replies) {
-    // 💡 [개선] 댓글의 작성자 ID와 현재 사용자 ID를 대조
-    final isCommentAuthor = comment.authorId == _currentUserId;
-
-    return Padding(
-      padding: EdgeInsets.only(left: comment.parentId != null ? 30.0 : 0.0, bottom: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Column(
         children: [
-          Card(
-            elevation: 1,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            margin: EdgeInsets.zero,
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+                  Wrap(
+                    spacing: 4,
                     children: [
-                      Text(
-                        comment.author,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      _buildCategoryBox(widget.post.region),
+                      _buildCategoryBox(widget.post.genre),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+
+                  Text(
+                    widget.post.title,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                  const SizedBox(height: 8),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text('작성자: ${widget.post.author}'),
                       ),
+                      Row(
+                        children: [
+                          const Icon(Icons.remove_red_eye, size: 16),
+                          const SizedBox(width: 4),
+                          Text('${widget.post.views}'),
+                        ],
+                      ),
+                      const SizedBox(width: 12),
+                      Row(
+                        children: [
+                          const Icon(Icons.thumb_up, size: 16),
+                          const SizedBox(width: 4),
+                          Text('$likes'),
+                        ],
+                      ),
+                      const SizedBox(width: 12),
                       Text(
-                        comment.date.toLocal().toString().split(' ')[0],
+                        '${widget.post.date.year}.${widget.post.date.month.toString().padLeft(2, '0')}.${widget.post.date.day.toString().padLeft(2, '0')}',
                         style: const TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(comment.text, style: const TextStyle(fontSize: 14)),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      // 답글 버튼
-                      GestureDetector(
-                        onTap: () => _startReply(comment.id, comment.author),
-                        child: const Text('답글', style: TextStyle(color: Colors.blue, fontSize: 12)),
+                  const Divider(height: 20),
+
+
+                  if (_isAuthor)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+
+                          GestureDetector(
+                            onTap: () async {
+                              log('▶️ [POST_EDIT_BUTTON] 게시물 수정 버튼 클릭됨', name: 'UI_ACTION');
+
+                              final bool? result = await Navigator.push<bool>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => PostEditPage(
+                                    postToEdit: widget.post,
+                                  ),
+                                ),
+                              );
+
+                              if (result == true) {
+                                _showSnackbar('게시물이 수정되었습니다. 상세 정보 새로고침이 필요합니다.');
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.blue[100],
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.edit, size: 20, color: Colors.blue[700]),
+                                  const SizedBox(width: 6),
+                                  const Text(
+                                    '게시물 수정',
+                                    style: TextStyle(fontSize: 14, color: Colors.blue),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+
+
+                          GestureDetector(
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialog(
+                                    title: const Text("게시글 삭제"),
+                                    content: const Text("정말로 이 게시글을 삭제하시겠습니까?"),
+                                    actions: <Widget>[
+                                      TextButton(
+                                        child: const Text("취소"),
+                                        onPressed: () {
+                                          Navigator.of(context).pop();
+                                        },
+                                      ),
+                                      TextButton(
+                                        child: const Text("삭제", style: TextStyle(color: Colors.red)),
+                                        onPressed: () {
+                                          Navigator.of(context).pop();
+                                          _deletePostApi();
+                                        },
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.red[100],
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.delete_forever, size: 20, color: Colors.red[700]),
+                                  const SizedBox(width: 6),
+                                  const Text(
+                                    '게시물 삭제',
+                                    style: TextStyle(fontSize: 14, color: Colors.red),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      // 삭제 버튼 (작성자에게만 표시)
-                      if (isCommentAuthor)
-                        GestureDetector(
-                          onTap: () => _deleteComment(comment), // ⭐️ [변경] CommentService 사용
-                          child: const Text('삭제', style: TextStyle(color: Colors.red, fontSize: 12)),
+                    ),
+                  Text(widget.post.content, style: const TextStyle(fontSize: 16)),
+
+                  _buildPerformanceCard(context),
+
+                  const SizedBox(height: 16),
+
+
+                  Center(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          likes += 1;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(24),
                         ),
-                    ],
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.thumb_up, size: 20, color: Colors.black),
+                            SizedBox(width: 6),
+                            Text(
+                              '추천하기',
+                              style: TextStyle(fontSize: 14, color: Colors.black),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
+
+                  const Divider(height: 20),
+
+
+                  if (_replyingToCommentId != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.reply, size: 18, color: Colors.orange),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              _commentHintText.replaceAll('입력하세요...', '작성 중'),
+                              style: const TextStyle(color: Colors.orange, fontSize: 14),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _cancelReplying,
+                            child: const Text('취소', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  const Text('댓글', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 12),
+
+                  _isLoadingComments
+                      ? const Center(child: CircularProgressIndicator())
+                      : _comments.isEmpty
+                      ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Text(
+                            '작성된 댓글이 없습니다.',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            '첫 댓글을 남겨보세요!',
+                            style: TextStyle(fontSize: 14, color: Colors.blueGrey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                      : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _comments.length,
+                    itemBuilder: (context, index) => _buildCommentItem(_comments[index]),
+                  ),
+                  const SizedBox(height: 80),
                 ],
               ),
             ),
           ),
-          // 답글 리스트
-          if (replies.isNotEmpty)
-            ...replies.map((reply) => _buildCommentItem(reply, [])).toList(),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildCommentInput() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.white,
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Colors.black12, width: 1.0)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_replyingToCommentId != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4.0),
-              child: Row(
-                children: [
-                  Text('답글 작성: @$_replyingToAuthor', style: const TextStyle(color: Colors.blue, fontSize: 12)),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: _resetReplyState,
-                    child: const Icon(Icons.close, size: 16, color: Colors.red),
-                  ),
-                ],
-              ),
-            ),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _commentController,
-                  decoration: InputDecoration(
-                    hintText: '댓글을 입력하세요...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide.none,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            color: Colors.lightBlue,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _commentController,
+                    focusNode: _commentFocusNode,
+                    decoration: InputDecoration(
+                      hintText: _commentHintText,
+                      hintStyle: TextStyle(color: Colors.grey[500]),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide.none,
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
-                    filled: true,
-                    fillColor: Colors.grey[200],
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
-                  maxLines: null,
                 ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: _submitComment, // ⭐️ [변경] CommentService 사용
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue,
-                    borderRadius: BorderRadius.circular(20),
+                const SizedBox(width: 8),
+
+                GestureDetector(
+                  onTap: _submitCommentApi,
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.3),
+                          spreadRadius: 1,
+                          blurRadius: 3,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.send,
+                      color: Colors.lightBlue,
+                      size: 24,
+                    ),
                   ),
-                  child: const Icon(Icons.send, color: Colors.white),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

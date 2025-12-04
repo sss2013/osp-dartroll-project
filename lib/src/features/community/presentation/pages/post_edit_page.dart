@@ -6,8 +6,9 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:cultureyo/src/features/community/data/post_model.dart';
-// PerformanceDetail 모델은 사용하지 않으므로 제거합니다.
 import 'package:url_launcher/url_launcher.dart';
+// PostService 추가
+import 'package:cultureyo/src/features/community/service/post_service.dart';
 
 // PostWritePage에서 사용하던 Performance 모델은 불필요하지만,
 // 기존 코드를 단순화하기 위해 주석 처리하고 필요한 필드만 사용합니다.
@@ -28,10 +29,11 @@ class _PostEditPageState extends State<PostEditPage> {
   final int titleMaxLength = 80;
   final int contentMaxLength = 500;
 
-  // 공연 정보는 표시용이므로 State 변수 대신 Post 데이터를 직접 사용합니다.
-
   // 💡 [테스트용] 현재 사용자 ID 정의 (API 요청에 필요)
   final String _currentUserId = 'testUser123';
+
+  // ⭐ [추가됨] PostService 인스턴스
+  final PostService _postService = PostService();
 
   @override
   void initState() {
@@ -49,59 +51,53 @@ class _PostEditPageState extends State<PostEditPage> {
     contentController.text = post.content;
   }
 
-  // ⭐ [API 로직] 게시물 수정 API 호출 (POST 요청 사용)
+  // ⭐ [API 로직] 게시물 수정 API 호출 (POST 요청 사용) - Service 호출로 변경
   Future<void> _editPostApi() async {
     final String newContent = contentController.text.trim();
+    final BuildContext currentContext = context;
 
     if (newContent.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(currentContext).showSnackBar(
         const SnackBar(content: Text('수정할 내용을 입력해주세요.')),
       );
       return;
     }
 
-    // 1. 서버로 전송할 요청 본문 (userId, tap, content만 사용)
-    final Map<String, dynamic> requestBody = {
-      "userId": _currentUserId, // 인증용 userId
-      "tap": widget.postToEdit.category, // 'review' 또는 'matching'
-      "content": newContent, // 수정된 내용
-    };
-
-    // 2. API URL 구성 (게시물 ID 포함)
     final String postId = widget.postToEdit.id;
-    final String url = 'https://dartroll-nodejs.onrender.com/api/post/$postId/postmodify';
+    final String category = widget.postToEdit.category;
 
-    log('▶️ [POST_EDIT_REQUEST] URL: $url', name: 'API_CHECK');
-    log('▶️ [POST_EDIT_REQUEST] 요청 Body: ${jsonEncode(requestBody)}', name: 'API_CHECK');
-
+    // 💡 [수정] http 통신 로직 제거 및 PostService 호출로 대체
     try {
-      final response = await http.post( // ⭐ POST 요청 사용
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(requestBody),
-      ).timeout(const Duration(seconds: 15));
+      final success = await _postService.modifyPost(
+        postId,
+        _currentUserId,
+        category,
+        newContent,
+      );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (!mounted) return;
+
+      if (success) {
         // [게시물 수정 성공]
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(currentContext).showSnackBar(
           const SnackBar(content: Text('게시물이 성공적으로 수정되었습니다.')),
         );
         // 상세 페이지로 돌아갈 때, 데이터가 수정되었음을 알리기 위해 pop(true)
-        Navigator.pop(context, true);
+        Navigator.pop(currentContext, true);
 
       } else {
-        log('🚨 [게시물 수정 실패] Status: ${response.statusCode}, Body: ${response.body}', name: 'POST_EDIT');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('게시물 수정에 실패했습니다 (서버 오류: ${response.statusCode})')),
+        // 실패는 Service 내부에서 로그 처리됨. 여기서는 사용자에게 알림
+        ScaffoldMessenger.of(currentContext).showSnackBar(
+          const SnackBar(content: Text('게시물 수정에 실패했습니다 (서버 오류)')),
         );
       }
     } on TimeoutException {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(currentContext).showSnackBar(
         const SnackBar(content: Text('게시물 수정 요청 시간이 초과되었습니다.')),
       );
     } catch (e) {
-      log('🚨 [게시물 수정 에러] Exception: $e', name: 'POST_EDIT');
-      ScaffoldMessenger.of(context).showSnackBar(
+      // Service 내부에서 에러 로그가 찍히므로, 여기서는 사용자에게 네트워크 오류만 알림
+      ScaffoldMessenger.of(currentContext).showSnackBar(
         const SnackBar(content: Text('게시물 수정 중 네트워크 연결 오류가 발생했습니다.')),
       );
     }

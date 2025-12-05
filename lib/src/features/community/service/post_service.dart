@@ -82,11 +82,13 @@ class PostService {
   }
 
   // 3. 게시물 삭제 (인증 필요 - dio 사용)
-  Future<bool> deletePost(String postId, String userId, String tapCategory) async {
+  // 💡 [수정] userId 매개변수 제거
+  Future<bool> deletePost(String postId, String tapCategory) async {
     final dio = dioClient.dio;
     // 💡 [변경] 상대 URL 사용
     final String endpoint = '/api/post/$postId/postdelete';
-    final Map<String, dynamic> requestBody = {"userId": userId, "tap": tapCategory};
+    // 💡 [수정] userId 필드 제거
+    final Map<String, dynamic> requestBody = {"tap": tapCategory};
 
     log('▶️ [POST_DELETE_REQUEST] URL: $endpoint', name: 'API_SERVICE_POST_DEL');
 
@@ -118,12 +120,13 @@ class PostService {
   }
 
   // 4. 게시물 수정 (인증 필요 - dio 사용)
-  Future<bool> modifyPost(String postId, String userId, String category, String content) async {
+  // 💡 [수정] userId 매개변수 제거
+  Future<bool> modifyPost(String postId, String category, String content) async {
     final dio = dioClient.dio;
     // 💡 [변경] 상대 URL 사용
     final String endpoint = '/api/post/$postId/postmodify';
+    // 💡 [수정] userId 필드 제거
     final Map<String, dynamic> requestBody = {
-      "userId": userId,
       "tap": category,
       "content": content,
     };
@@ -161,6 +164,8 @@ class PostService {
     // 💡 [변경] 상대 URL 사용
     final String endpoint = '/api/post/upload';
 
+    // 이 함수는 Body를 인자로 받으므로, Body 내에 userId가 없어야 합니다.
+    // (PostWritePage에서 userId를 제거하는 로직이 필요합니다.)
     log('▶️ [POST_CREATE_REQUEST] URL: $endpoint', name: 'API_SERVICE_POST_CRT');
 
     try {

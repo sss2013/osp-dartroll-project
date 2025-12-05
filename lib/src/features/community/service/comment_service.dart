@@ -3,17 +3,12 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:dio/dio.dart'; // 💡 [추가] Dio 패키지 임포트
-// 💡 [제거] import 'package:http/http.dart' as http;
-// 💡 [제거] import 'dart:convert';
 
 import 'package:cultureyo/src/features/community/data/comment_model.dart';
 // 💡 [추가] DioClient 임포트
 import 'package:cultureyo/src/core/network/dio_client.dart';
 
 class CommentService {
-  // 💡 [제거] 기존 _baseUrl 제거 (DioClient가 관리)
-  // static const String _baseUrl = 'https://dartroll-nodejs.onrender.com/api/post';
-  // static const int _timeoutSeconds = 15; // DioClient에서 관리하므로 제거
 
   // 💡 [추가] DioClient 주입
   final DioClient dioClient;
@@ -57,7 +52,7 @@ class CommentService {
   // 2. 댓글/답글 작성 (POST) - 인증 필요 (dio 사용)
   Future<bool> submitComment(
       String postId,
-      String userId,
+      // ❌ [삭제] userId 인자 제거
       String text,
       {String? parentId}
       ) async {
@@ -66,7 +61,7 @@ class CommentService {
     final String endpoint = '/api/post/$postId/comment';
 
     final Map<String, dynamic> requestBody = {
-      "userId": userId,
+      // ❌ [삭제] "userId": userId,
       "text": text,
     };
 
@@ -97,19 +92,23 @@ class CommentService {
   }
 
   // 3. 댓글 삭제 (POST) - 인증 필요 (dio 사용)
-  Future<bool> deleteComment(String commentId, String currentUserId) async {
+  Future<bool> deleteComment(String commentId,
+      // ❌ [삭제] currentUserId 인자 제거
+      ) async {
     final dio = dioClient.dio; // 💡 [변경] 인증된 Dio 인스턴스 사용
     // 💡 [변경] 상대 URL 사용
     final String endpoint = '/api/post/$commentId/commentdelete';
-    final Map<String, dynamic> requestBody = {"userId": currentUserId};
+    // ❌ [삭제] userId 필드가 포함된 requestBody 제거 (백엔드에서 토큰으로 인증)
+    // final Map<String, dynamic> requestBody = {"userId": currentUserId};
 
     log('▶️ [COMMENT_DELETE_REQUEST] URL: $endpoint', name: 'API_SERVICE_COMMENT_DEL');
 
     try {
-      // 💡 [변경] Dio.post 사용
+      // 💡 [변경] Dio.post 사용. 삭제는 Body 없이 빈 Map을 전달하거나, DELETE 메서드를 사용해야 하지만
+      // 현재 백엔드 엔드포인트가 'commentdelete' POST이므로 빈 Map을 전달하거나 data를 생략합니다.
       final response = await dio.post(
         endpoint,
-        data: requestBody,
+        // data: requestBody, // Body 필요 없음 (토큰 인증)
       );
 
       log('Status Code: ${response.statusCode}', name: 'API_SERVICE_COMMENT_DEL');

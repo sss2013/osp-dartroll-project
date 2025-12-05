@@ -189,7 +189,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
-  // ⭐ [수정] 댓글 작성/답글 작성 로직: DioException 처리 추가 및 ID Null 체크
+  // ⭐ [수정] 댓글 작성/답글 작성 로직: userId 인자 제거
   Future<void> _submitCommentApi() async {
     if (_currentUserId == null) {
       _showSnackbar('사용자 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
@@ -205,9 +205,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
 
     try {
+      // 💡 [수정] userId 인자 제거 (토큰 사용)
       final success = await _commentService.submitComment(
         widget.post.id,
-        _currentUserId!, // ID가 null이 아님을 보장
         commentText,
         parentId: parentId,
       );
@@ -233,7 +233,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
-  // ⭐ [수정] 게시물 삭제 로직: DioException 처리 추가 및 ID Null 체크
+  // ⭐ [수정] 게시물 삭제 로직: userId 인자 제거
   Future<void> _deletePostApi() async {
     if (_currentUserId == null) {
       _showSnackbar('사용자 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
@@ -241,9 +241,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
 
     try {
+      // 💡 [수정] userId 인자 제거 (토큰 사용)
       final success = await _postService.deletePost(
         widget.post.id,
-        _currentUserId!, // ID가 null이 아님을 보장
         widget.post.category,
       );
 
@@ -266,7 +266,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
-  // ⭐ [수정] 댓글 삭제 로직: DioException 처리 추가 및 ID Null 체크
+  // ⭐ [수정] 댓글 삭제 로직: userId 인자 제거
   Future<void> _deleteCommentApi(String commentId) async {
     if (_currentUserId == null) {
       _showSnackbar('사용자 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
@@ -275,7 +275,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
     log('▶️ [DELETE_COMMENT_INIT] Comment ID: $commentId, User ID: $_currentUserId', name: 'UI_ACTION_DELETE');
     try {
-      final success = await _commentService.deleteComment(commentId, _currentUserId!); // ID가 null이 아님을 보장
+      // 💡 [수정] userId 인자 제거 (토큰 사용)
+      final success = await _commentService.deleteComment(commentId); // ID가 null이 아님을 보장
 
       if (mounted) {
         if (success) {
@@ -534,8 +535,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
       ),
     );
   }
-
-
   @override
   Widget build(BuildContext context) {
 

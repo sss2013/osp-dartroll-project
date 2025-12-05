@@ -79,14 +79,15 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),
-        home: MainScreen()
-/*
+      //로그인 창 스킵하고 바로 홈화면으로 넘어가서 테스트하고 싶을 떄 사용
+      //home: MainScreen()
+
       routes: {
         '/' : (context) => const SplashPage(),
         '/login' : (context) => const LoginPage()
       },
       initialRoute: '/',
-*/
+
 
     );
   }

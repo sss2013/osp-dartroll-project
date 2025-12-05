@@ -29,7 +29,9 @@ class _PostEditPageState extends State<PostEditPage> {
   final int titleMaxLength = 80;
   final int contentMaxLength = 500;
 
-  // 💡 [테스트용] 현재 사용자 ID 정의 (API 요청에 필요)
+  // 💡 [테스트용] 현재 사용자 ID 정의 (API 요청에 필요했으나, 제거 예정)
+  // 현재는 PostDetailPage처럼 UserService를 통해 ID를 로드하는 로직이 없으므로,
+  // 이 페이지 진입 시 인증 상태가 유지된다는 가정 하에 ID 필드 자체는 그대로 둡니다.
   final String _currentUserId = 'testUser123';
 
   // ⭐ [변경] PostService 인스턴스를 Provider로 주입받을 변수로 선언
@@ -77,9 +79,9 @@ class _PostEditPageState extends State<PostEditPage> {
 
     // 💡 [수정] DioException 처리 로직으로 변경
     try {
+      // 💡 [수정] _currentUserId 인자 제거 (Header 토큰 인증 사용)
       final success = await _postService.modifyPost(
         postId,
-        _currentUserId,
         category,
         newContent,
       );

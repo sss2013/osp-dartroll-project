@@ -110,12 +110,13 @@ class _PostWritePageState extends State<PostWritePage> {
     }
 
     // 3. userId와 content 필드명 적용
-    String currentUserId = 'testUser123'; // 임시 테스트 ID 사용
+    // 💡 [수정] userId를 Header 토큰에서 추출하기로 합의했으므로, Body에 userId를 포함하는 로직을 제거합니다.
+    // String currentUserId = 'testUser123'; // 임시 테스트 ID 사용 로직 제거
 
     // 4. 서버로 전송할 요청 본문
     final Map<String, dynamic> requestBody = {
       "title": titleController.text,
-      "userId": currentUserId, // 테스트 userId 반영
+      // 💡 [수정] "userId": currentUserId, // 테스트 userId 반영 로직 제거
       "area": detail.area ?? '지역 미정',
       "genre": finalGenre, // 최종 결정된 장르 값 사용
       "content": contentController.text, // content -> context로 필드명 변경 (원래 로직 유지)

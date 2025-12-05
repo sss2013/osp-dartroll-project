@@ -1,11 +1,15 @@
 // lib/src/features/community/presentation/pages/board_page.dart
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart'; // 💡 [추가] Provider 사용을 위해 임포트
+import 'package:dio/dio.dart'; // 💡 [추가] DioException 처리를 위해 임포트
+
+// ⭐ [추가] PostService import
+import 'package:cultureyo/src/features/community/service/post_service.dart';
 import 'package:cultureyo/src/features/community/data/post_model.dart';
+
 import 'post_detail_page.dart';
 import 'post_write_page.dart';
 import '../../../home.dart';
@@ -20,6 +24,9 @@ class BoardPage extends StatefulWidget {
 class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  // 💡 [변경] PostService 인스턴스를 직접 생성하지 않고, Provider로 주입받을 변수로 선언
+  late PostService _postService;
+
   String selectedRegion = '전체';
   String selectedGenre = '전체';
 
@@ -29,7 +36,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     '전체', '강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '지역 미정'
   ];
 
-  // 💡 [수정] 행사/축제, 교육/체험 장르 추가
   final List<String> genres = [
     '전체', '국악', '기타', '무용/발레', '뮤지컬/오페라', '연극', '음악/콘서트', '전시', '행사/축제', '교육/체험'
   ];
@@ -53,7 +59,21 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
       }
     });
 
-    _fetchPosts();
+    // 🚨 [변경] _fetchPosts()를 initState에서 제거하고 didChangeDependencies()로 옮김
+    // _fetchPosts();
+  }
+
+  // 💡 [추가] Service 인스턴스를 context를 통해 가져오는 메서드
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // context.read를 사용하여 Service 인스턴스를 가져옵니다.
+    _postService = context.read<PostService>();
+
+    // 최초 목록 로드 실행 (initState의 역할을 대신)
+    if (posts.isEmpty && !isLoading) {
+      _fetchPosts();
+    }
   }
 
   @override
@@ -62,63 +82,41 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     super.dispose();
   }
 
-  // 💡 [추가] 조회수 증가 API 호출 함수 (유지)
-  Future<void> _increaseViewCount(String postId, String category) async {
-    final url = 'https://dartroll-nodejs.onrender.com/api/post/$postId/views?tap=$category';
-    log('🚀 [API_REQUEST] Increasing view count: $url', name: 'VIEW_COUNT');
-
-    try {
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 5));
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        log('✅ [API_SUCCESS] View count increased for Post ID: $postId', name: 'VIEW_COUNT');
-      } else {
-        log('🚨 [API_ERROR] Failed to increase view count. Status: ${response.statusCode}', name: 'VIEW_COUNT');
-      }
-    } on TimeoutException {
-      log('🚨 [API_EXCEPTION] Timeout increasing view count.', name: 'VIEW_COUNT');
-    } catch (e) {
-      log('🚨 [API_EXCEPTION] Error increasing view count: $e', name: 'VIEW_COUNT');
-    }
-  }
-
-  // 💡 [수정/유지] API 호출 함수
+  // ⭐ [수정] _fetchPosts 함수: DioException 처리 구조 추가
   Future<void> _fetchPosts() async {
+    // 💡 _postService가 초기화되지 않았다면 바로 리턴 (안전 장치)
+    if (!mounted || _postService == null) return;
+
     setState(() {
       isLoading = true;
     });
 
     final String category = _tabController.index == 0 ? 'review' : 'matching';
-    // API 호출 시 limit=100을 사용하고, 서버에서 해당 카테고리(tap)에 해당하는 데이터를 모두 가져옵니다.
-    // 장르 필터링은 로컬에서 처리되므로, API 호출 자체는 변경할 필요가 없습니다.
-    final url = 'https://dartroll-nodejs.onrender.com/api/post/getAll?page=0&limit=100&tap=$category';
 
-    log('🔍 [API_REQUEST] Fetching posts: $url', name: 'BOARD_PAGE');
+    log('🔍 [CALL_SERVICE] Fetching posts for category: $category', name: 'BOARD_PAGE');
 
     try {
-      final response = await http.get(Uri.parse(url));
+      // ⭐ PostService의 fetchPosts 함수 호출
+      final fetchedPosts = await _postService.fetchPosts(category);
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final List<dynamic> jsonList = jsonDecode(response.body);
+      setState(() {
+        posts = fetchedPosts;
+        isLoading = false;
+      });
 
-        log('✅ [API_RESPONSE] Count: ${jsonList.length}', name: 'BOARD_PAGE');
-
-        setState(() {
-          posts = jsonList.map((json) {
-            return Post.fromApiJson(json as Map<String, dynamic>, category: category);
-          }).toList();
-
-          isLoading = false;
-        });
-      } else {
-        log('🚨 [API_ERROR] Status: ${response.statusCode}', name: 'BOARD_PAGE');
-        setState(() {
-          posts = [];
-          isLoading = false;
-        });
+    } on DioException catch (e) { // 💡 [추가] DioException 처리
+      log('🚨 [DIO_ERROR] Failed to fetch posts: ${e.message}', name: 'BOARD_PAGE');
+      if(mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('게시물 로드 실패: ${e.message}')),
+        );
       }
+      setState(() {
+        posts = [];
+        isLoading = false;
+      });
     } catch (e) {
-      log('🚨 [API_EXCEPTION] $e', name: 'BOARD_PAGE');
+      log('🚨 [SERVICE_ERROR] Failed to fetch posts: $e', name: 'BOARD_PAGE');
       setState(() {
         posts = [];
         isLoading = false;
@@ -126,9 +124,12 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     }
   }
 
-  // 기존 로컬 필터링 로직 유지 (받아온 API 데이터를 기준으로 필터링)
+  // ----------------------------------------------------
+  // [유지] 기존 로컬 필터링, 페이지네이션, 지역/장르 선택, UI 구성 로직은 그대로 유지
+  // ----------------------------------------------------
+
   List<Post> _filteredPosts(String category) {
-    // 💡 장르 리스트가 수정되었으므로, 이 로직은 자동으로 '행사/축제', '교육/체험'에 대한 필터링을 지원합니다.
+    // ... 로직 유지 ...
     final filtered = posts.where((post) {
       final regionMatch =
           selectedRegion == '전체' || post.region == selectedRegion;
@@ -161,6 +162,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   }
 
   Future<void> _selectRegion() async {
+    // ... 로직 유지 ...
     final region = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
@@ -183,6 +185,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   }
 
   Future<void> _selectGenre() async {
+    // ... 로직 유지 ...
     final genre = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
@@ -228,6 +231,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    // ... build 로직 유지 ...
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -353,6 +357,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   }
 
   Widget _buildPostList(String category) {
+    // ... _buildPostList 로직 유지 ...
     final posts = _filteredPosts(category);
     final totalPages = (_getFilteredCount(category) / postsPerPage).ceil();
 
@@ -401,17 +406,29 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
         final post = posts[index];
         return GestureDetector(
           onTap: () async {
-            // 1. 조회수 증가 API 호출
-            await _increaseViewCount(post.id, post.category);
+            try {
+              // 1. ⭐ [수정] PostService의 increaseViewCount 함수 호출 (Dio/Provider 사용)
+              await _postService.increaseViewCount(post.id, post.category);
 
-            // 2. 상세 페이지로 이동하며 복귀를 기다림 (await)
-            await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => PostDetailPage(post: post)),
-            );
+              // 2. 상세 페이지로 이동하며 복귀를 기다림 (await)
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => PostDetailPage(post: post)),
+              );
 
-            // 3. 상세 페이지에서 돌아왔을 때 목록을 새로고침하여 조회수 갱신
-            _fetchPosts();
+              // 3. 상세 페이지에서 돌아왔을 때 목록을 새로고침하여 조회수 갱신
+              _fetchPosts();
+
+            } on DioException catch (e) {
+              log('🚨 [DIO_ERROR] Failed to increase view count: ${e.message}', name: 'BOARD_PAGE_VIEW');
+              if(mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('조회수 증가 실패: ${e.message}')),
+                );
+              }
+            } catch (e) {
+              log('🚨 [SERVICE_ERROR] Failed to increase view count: $e', name: 'BOARD_PAGE_VIEW');
+            }
           },
           child: Container(
             margin: const EdgeInsets.symmetric(vertical: 4),

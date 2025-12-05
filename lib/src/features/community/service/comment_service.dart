@@ -1,52 +1,67 @@
 // lib/src/features/community/service/comment_service.dart
 
-import 'dart:convert';
-import 'dart:developer';
-import 'package:http/http.dart' as http;
-import 'package:cultureyo/src/features/community/data/comment_model.dart';
 import 'dart:async';
+import 'dart:developer';
+import 'package:dio/dio.dart'; // 💡 [추가] Dio 패키지 임포트
+
+import 'package:cultureyo/src/features/community/data/comment_model.dart';
+// 💡 [추가] DioClient 임포트
+import 'package:cultureyo/src/core/network/dio_client.dart';
 
 class CommentService {
-  static const String _baseUrl = 'https://dartroll-nodejs.onrender.com/api/post';
-  static const int _timeoutSeconds = 15;
 
-  // 1. 댓글 목록 가져오기 (GET)
+  // 💡 [추가] DioClient 주입
+  final DioClient dioClient;
+
+  CommentService({required this.dioClient}); // 💡 [변경] 생성자 수정
+
+  // 1. 댓글 목록 가져오기 (GET) - 인증 필요 (게시물 상세 페이지 접근 시 인증)
   Future<List<Comment>> fetchComments(String postId) async {
-    // ... (기존 로직 유지) ...
-    final String endpoint = '$_baseUrl/$postId/comment';
+    final dio = dioClient.dio; // 💡 [변경] 인증된 Dio 인스턴스 사용
+    // 💡 [변경] 상대 URL 사용
+    final String endpoint = '/api/post/$postId/comment';
+
     log('▶️ [COMMENT_FETCH_REQUEST] URL: $endpoint', name: 'API_SERVICE_FETCH');
+
     try {
-      final response = await http.get(Uri.parse(endpoint)).timeout(const Duration(seconds: _timeoutSeconds));
+      // 💡 [변경] Dio.get 사용
+      final response = await dio.get(endpoint);
+
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final decodedBody = jsonDecode(response.body);
+        // Dio 응답의 data는 이미 List<dynamic>으로 디코딩되어 있습니다.
+        final dynamic decodedBody = response.data;
+
         if (decodedBody is List) {
           log('✅ [PARSING_SUCCESS] Fetched ${decodedBody.length} comments.', name: 'API_SERVICE_FETCH');
-          return decodedBody.map<Comment>((json) => Comment.fromJson(json)).toList();
+          return decodedBody.map<Comment>((json) => Comment.fromJson(json as Map<String, dynamic>)).toList();
         }
       }
+
       log('🚨 [FETCH_FAILURE] Unexpected response status or format.', name: 'API_SERVICE_FETCH');
-      return [];
-    } on TimeoutException {
-      log('🚨 [FETCH_TIMEOUT] 서버 응답 시간 초과', name: 'API_SERVICE_FETCH');
-      rethrow;
+      return []; // 기존 로직과 동일하게 빈 리스트 반환
+
+    } on DioException catch (e) { // 💡 [변경] DioException 처리
+      log('🚨 [FETCH_ERROR] DioException: ${e.message}', name: 'API_SERVICE_FETCH');
+      rethrow; // 기존 로직과 동일하게 재throw
     } catch (e) {
       log('🚨 [FETCH_ERROR] Exception: $e', name: 'API_SERVICE_FETCH');
-      rethrow;
+      rethrow; // 기존 로직과 동일하게 재throw
     }
   }
 
-  // 2. 댓글/답글 작성 (POST)
+  // 2. 댓글/답글 작성 (POST) - 인증 필요 (dio 사용)
   Future<bool> submitComment(
       String postId,
-      String userId,
+      // ❌ [삭제] userId 인자 제거
       String text,
       {String? parentId}
       ) async {
-    // ... (기존 로직 유지) ...
-    final String endpoint = '$_baseUrl/$postId/comment';
+    final dio = dioClient.dio; // 💡 [변경] 인증된 Dio 인스턴스 사용
+    // 💡 [변경] 상대 URL 사용
+    final String endpoint = '/api/post/$postId/comment';
 
     final Map<String, dynamic> requestBody = {
-      "userId": userId,
+      // ❌ [삭제] "userId": userId,
       "text": text,
     };
 
@@ -55,95 +70,62 @@ class CommentService {
     }
 
     log('▶️ [COMMENT_CREATE_REQUEST] URL: $endpoint', name: 'API_SERVICE_CREATE');
-    log('▶️ [COMMENT_CREATE_BODY] Body: ${jsonEncode(requestBody)}', name: 'API_SERVICE_CREATE');
-
 
     try {
-      final response = await http.post(
-        Uri.parse(endpoint),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(requestBody),
-      ).timeout(const Duration(seconds: _timeoutSeconds));
+      // 💡 [변경] Dio.post 사용. data에 Map을 전달하면 Dio가 자동으로 JSON 인코딩 처리.
+      final response = await dio.post(
+        endpoint,
+        data: requestBody,
+      );
 
       log('Status Code: ${response.statusCode}', name: 'API_SERVICE_CREATE');
 
       return response.statusCode == 200 || response.statusCode == 201;
 
-    } on TimeoutException {
-      log('🚨 [CREATE_TIMEOUT] 서버 응답 시간 초과', name: 'API_SERVICE_CREATE');
-      rethrow;
+    } on DioException catch (e) { // 💡 [변경] DioException 처리
+      log('🚨 [CREATE_ERROR] DioException: ${e.message}', name: 'API_SERVICE_CREATE');
+      rethrow; // 기존 로직과 동일하게 재throw
     } catch (e) {
       log('🚨 [CREATE_ERROR] Exception: $e', name: 'API_SERVICE_CREATE');
-      rethrow;
+      rethrow; // 기존 로직과 동일하게 재throw
     }
   }
 
-  // 3. 게시물 삭제 (POST)
-  Future<bool> deletePost(String postId, String userId, String tapCategory) async {
-    // ... (기존 로직 유지) ...
-    final String endpoint = '$_baseUrl/$postId/postdelete';
-    final Map<String, dynamic> requestBody = {"userId": userId, "tap": tapCategory};
-    final String encodedBody = jsonEncode(requestBody);
-
-    log('▶️ [POST_DELETE_REQUEST] URL: $endpoint', name: 'API_SERVICE_POST_DEL');
-    log('▶️ [POST_DELETE_BODY] Body: $encodedBody', name: 'API_SERVICE_POST_DEL');
-
-    try {
-      final response = await http.post(
-        Uri.parse(endpoint),
-        headers: {'Content-Type': 'application/json'},
-        body: encodedBody,
-      ).timeout(const Duration(seconds: _timeoutSeconds));
-
-      log('Status Code: ${response.statusCode}', name: 'API_SERVICE_POST_DEL');
-
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        log('🚨 [POST_DELETE_FAIL_RESPONSE] Body: ${response.body}', name: 'API_SERVICE_POST_DEL');
-      }
-
-      return response.statusCode == 200 || response.statusCode == 201;
-
-    } on TimeoutException {
-      log('🚨 [DELETE_TIMEOUT] 서버 응답 시간 초과', name: 'API_SERVICE_POST_DEL');
-      rethrow;
-    } catch (e) {
-      log('🚨 [DELETE_ERROR] Exception: $e', name: 'API_SERVICE_POST_DEL');
-      rethrow;
-    }
-  }
-
-  // 4. 댓글 삭제 (POST) - 💡 [강화] userId 대조를 위해 Body 전송 확인 및 Log 강화
-  Future<bool> deleteComment(String commentId, String currentUserId) async {
-    final String endpoint = '$_baseUrl/$commentId/commentdelete';
-    final Map<String, dynamic> requestBody = {"userId": currentUserId};
-    final String encodedBody = jsonEncode(requestBody);
+  // 3. 댓글 삭제 (POST) - 인증 필요 (dio 사용)
+  Future<bool> deleteComment(String commentId,
+      // ❌ [삭제] currentUserId 인자 제거
+      ) async {
+    final dio = dioClient.dio; // 💡 [변경] 인증된 Dio 인스턴스 사용
+    // 💡 [변경] 상대 URL 사용
+    final String endpoint = '/api/post/$commentId/commentdelete';
+    // ❌ [삭제] userId 필드가 포함된 requestBody 제거 (백엔드에서 토큰으로 인증)
+    // final Map<String, dynamic> requestBody = {"userId": currentUserId};
 
     log('▶️ [COMMENT_DELETE_REQUEST] URL: $endpoint', name: 'API_SERVICE_COMMENT_DEL');
-    // 💡 [강화] 서버에서 userId 대조를 위해 전송되는 body 로그
-    log('▶️ [COMMENT_DELETE_BODY] Body: $encodedBody', name: 'API_SERVICE_COMMENT_DEL');
 
     try {
-      final response = await http.post(
-        Uri.parse(endpoint),
-        headers: {'Content-Type': 'application/json'},
-        body: encodedBody, // 💡 [검증] userId를 포함한 바디를 전송
-      ).timeout(const Duration(seconds: _timeoutSeconds));
+      // 💡 [변경] Dio.post 사용. 삭제는 Body 없이 빈 Map을 전달하거나, DELETE 메서드를 사용해야 하지만
+      // 현재 백엔드 엔드포인트가 'commentdelete' POST이므로 빈 Map을 전달하거나 data를 생략합니다.
+      final response = await dio.post(
+        endpoint,
+        // data: requestBody, // Body 필요 없음 (토큰 인증)
+      );
 
       log('Status Code: ${response.statusCode}', name: 'API_SERVICE_COMMENT_DEL');
 
-      // 💡 [강화] 실패했을 경우 응답 바디 로그
       if (response.statusCode != 200 && response.statusCode != 201) {
-        log('🚨 [COMMENT_DELETE_FAIL_RESPONSE] Body: ${response.body}', name: 'API_SERVICE_COMMENT_DEL');
+        // DioException이 발생하지 않았다면 여기서 로그
+        log('🚨 [COMMENT_DELETE_FAIL_RESPONSE] Body: ${response.data}', name: 'API_SERVICE_COMMENT_DEL');
       }
 
       return response.statusCode == 200 || response.statusCode == 201;
 
-    } on TimeoutException {
-      log('🚨 [DELETE_TIMEOUT] 서버 응답 시간 초과', name: 'API_SERVICE_COMMENT_DEL');
-      rethrow;
+    } on DioException catch (e) { // 💡 [변경] DioException 처리
+      log('🚨 [DELETE_ERROR] DioException: ${e.message}', name: 'API_SERVICE_COMMENT_DEL');
+      rethrow; // 기존 로직과 동일하게 재throw
     } catch (e) {
       log('🚨 [DELETE_ERROR] Exception: $e', name: 'API_SERVICE_COMMENT_DEL');
-      rethrow;
+      rethrow; // 기존 로직과 동일하게 재throw
     }
   }
 }

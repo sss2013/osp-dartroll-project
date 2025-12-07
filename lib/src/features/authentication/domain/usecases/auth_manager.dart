@@ -27,8 +27,9 @@ class AuthManager extends ChangeNotifier {
   AuthManager({
     required this.dioClient,
     required this.secureStorage,
-  })  : kakaoService = KakaoLoginService(
-            publicDio: dioClient.publicDio, secureStorage: secureStorage),
+  })
+      : kakaoService = KakaoLoginService(
+      publicDio: dioClient.publicDio, secureStorage: secureStorage),
         naverService = NaverLoginService(
             publicDio: dioClient.publicDio, secureStorage: secureStorage) {
     _authSubscription = dioClient.onAuthenticationFailed.listen((_) {
@@ -74,6 +75,44 @@ class AuthManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> processWebLoginSuccess({
+    required String accessToken,
+    required String? refreshToken,
+    required String accessExpiresAt,
+  }) async {
+    if(kDebugMode) {
+      print('--- processWebLoginSuccess Fired ---');
+      print('Received accessToken: $accessToken');
+      print('Received refreshToken: $refreshToken');
+      print('Received accessExpiresAt STRING: $accessExpiresAt');
+    }
+    try {
+      final authData = AuthData(
+        serverJwt: accessToken,
+        serverJwtExpiresAt: DateTime.parse(accessExpiresAt).toUtc(),
+        refreshToken: refreshToken,
+      );
+
+      if(kDebugMode){
+        print('Web login success received: $authData');
+      }
+
+      await _saveServerTokens(authData);
+
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      if (kDebugMode) {
+        print('Web login success processed!!!!!!!!!');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error processing web login success: $e');
+      }
+      _status = AuthStatus.none;
+      notifyListeners();
+    }
+  }
+
   Future<bool> _manualRefresh() async {
     final refreshToken = await secureStorage.read(key: 'server_refresh_token');
     if (refreshToken == null) return false;
@@ -92,7 +131,7 @@ class AuthManager extends ChangeNotifier {
         final authData = AuthData(
           serverJwt: response.data['access']['token'],
           serverJwtExpiresAt:
-              DateTime.parse(response.data['access']['expiresAt']),
+          DateTime.parse(response.data['access']['expiresAt']),
           refreshToken: response.data['refresh']?['token'],
         );
         await _saveServerTokens(authData);
@@ -143,6 +182,9 @@ class AuthManager extends ChangeNotifier {
   }
 
   Future<void> _saveServerTokens(AuthData data) async {
+    if(kDebugMode){
+      print('start savetoken');
+    }
     await secureStorage.write(key: 'server_jwt', value: data.serverJwt);
     await secureStorage.write(
         key: 'server_jwt_expires_at',

@@ -5,17 +5,21 @@ import 'package:cultureyo/src/features/authentication/domain/usecases/auth_manag
 import 'package:cultureyo/src/features/authentication/presentation/pages/login_page.dart';
 import 'package:cultureyo/src/features/authentication/presentation/pages/splash_page.dart';
 import 'package:cultureyo/src/features/profile/domain/user_service.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'package:cultureyo/src/features/authentication/presentation/pages/login_redirect_page.dart';
 import 'package:cultureyo/src/features/home.dart';
 
 // ⭐ [추가] PostService와 PerformanceService 임포트 경로
 import 'package:cultureyo/src/features/community/service/post_service.dart';
 import 'package:cultureyo/src/features/community/service/performance_service.dart';
+
 // 💡 [추가] CommentService 임포트 경로
 import 'package:cultureyo/src/features/community/service/comment_service.dart';
 
@@ -23,6 +27,7 @@ import 'package:cultureyo/src/features/community/service/comment_service.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
+  setUrlStrategy(const HashUrlStrategy());
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
 
@@ -71,24 +76,54 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return MaterialApp(
-        navigatorKey: navigatorKey,
-        debugShowCheckedModeBanner: false, // 우측 상단의 'DEBUG' 배너 제거
-        title: 'Cultureyo',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-        ),
-      //로그인 창 스킵하고 바로 홈화면으로 넘어가서 테스트하고 싶을 떄 사용
-      //home: MainScreen()
+      navigatorKey: navigatorKey,
+      debugShowCheckedModeBanner: false,
+      // 우측 상단의 'DEBUG' 배너 제거
+      title: 'Cultureyo',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
 
-      routes: {
-        '/' : (context) => const SplashPage(),
-        '/login' : (context) => const LoginPage()
+      onGenerateRoute: (settings) {
+        if (settings.name != null &&
+            settings.name!.startsWith('/login-success')) {
+          final uri = Uri.parse(settings.name!);
+          final accessToken = uri.queryParameters['accessToken'];
+          final refreshToken = uri.queryParameters['refreshToken'];
+          final accessExpiresAt = uri.queryParameters['accessExpiresAt'];
+
+          // LoginRedirectPage로 정보 전달
+          return MaterialPageRoute(
+            builder: (context) =>
+                LoginRedirectPage(
+                  accessToken: accessToken,
+                  refreshToken: refreshToken,
+                  accessExpiresAt: accessExpiresAt,
+                ),
+          );
+        }
+        if (settings.name == '/login') {
+          return MaterialPageRoute(builder: (_) => const LoginPage());
+        }
+
+        return MaterialPageRoute(builder: (_) => const SplashPage());
       },
-      initialRoute: '/',
 
-
+      home: Consumer<AuthManager>(
+        builder: (context, authManager, child) {
+          // AuthManager의 상태에 따라 다른 화면을 보여줍니다.
+          switch (authManager.status) {
+            case AuthStatus.authenticated:
+            case AuthStatus.kakao:
+            case AuthStatus.naver:
+              return MainScreen(); // 인증된 사용자는 메인 화면으로
+            case AuthStatus.none:
+            default:
+              return const SplashPage(); // 기본 상태는 스플래시 화면 (여기서 checkAuth() 호출)
+          }
+        },
+      ),
     );
   }
 }

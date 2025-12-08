@@ -21,8 +21,8 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = [
     HomePage(),
-    ChatPage(),
     BoardPage(),
+    ChatPage(),
     MyInfoPage(),
   ];
 
@@ -35,7 +35,7 @@ class _MainScreenState extends State<MainScreen> {
       extendBody: true,
       body: _pages[_selectedIndex],
       bottomNavigationBar: ClipRRect(
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(25),
           topRight: Radius.circular(25),
         ),
@@ -45,13 +45,14 @@ class _MainScreenState extends State<MainScreen> {
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.7),
               border: Border(
-                top: BorderSide(color: _primaryBlue.withOpacity(0.2), width: 0.5),
+                top: BorderSide(
+                    color: _primaryBlue.withOpacity(0.2), width: 0.5),
               ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.blue.withOpacity(0.05),
                   blurRadius: 10,
-                  offset: Offset(0, -3),
+                  offset: const Offset(0, -3),
                 ),
               ],
             ),
@@ -71,13 +72,13 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.message_outlined),
-                  activeIcon: Icon(Icons.message),
-                  label: '채팅',
+                  activeIcon: Icon(Icons.article),
+                  label: '게시판',
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.article_outlined),
-                  activeIcon: Icon(Icons.article),
-                  label: '게시판',
+                  activeIcon: Icon(Icons.message),
+                  label: '채팅',
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.person_outline),
@@ -94,6 +95,8 @@ class _MainScreenState extends State<MainScreen> {
 }
 
 class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -120,19 +123,24 @@ class _HomePageState extends State<HomePage> {
     });
 
     try {
-      final allEvents = await eventService.postGetEvents(area: "서울", genre: "전시");
+      final allEvents =
+      await eventService.postGetEvents(area: "서울", genre: "전시");
       allEvents.shuffle();
       setState(() {
         upcomingEvents = allEvents.take(3).toList();
       });
     } catch (e) {
-      setState(() {
-        loadError = "이벤트 로딩 실패";
-      });
+      if (mounted) {
+        setState(() {
+          loadError = "이벤트 로딩 실패";
+        });
+      }
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -141,7 +149,8 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: ElevatedButton(
         onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => RegionSelectPage()));
+          Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const RegionSelectPage()));
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: _primaryBlue,
@@ -152,9 +161,9 @@ class _HomePageState extends State<HomePage> {
           ),
           elevation: 0,
         ),
-        child: Row(
+        child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             Icon(Icons.map_outlined),
             SizedBox(width: 12),
             Text(
@@ -169,13 +178,19 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context).size;
+    final mq = MediaQuery
+        .of(context)
+        .size;
     final cardMaxWidth = mq.width > 600 ? 600.0 : mq.width;
 
     return Scaffold(
       backgroundColor: _lightBlueBg,
       appBar: AppBar(
-        title: const Text("컬쳐요", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white)),
+        title: const Text("컬쳐요",
+            style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: Colors.white)),
         centerTitle: true,
         backgroundColor: _primaryBlue,
         elevation: 0,
@@ -184,40 +199,72 @@ class _HomePageState extends State<HomePage> {
         child: Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: cardMaxWidth),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              const SizedBox(height: 24),
-              _searchButton(),
-
-              const SizedBox(height: 24),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Container(
-                  height: 120,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    gradient: LinearGradient(colors: [Colors.blue[100]!, Colors.blue[200]!]),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 24),
+                  _searchButton(),
+                  const SizedBox(height: 24),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Container(
+                      height: 120,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        gradient: LinearGradient(
+                            colors: [Colors.blue[100]!, Colors.blue[200]!]),
+                      ),
+                      child: const Center(
+                          child: Text("광고 배너 영역",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold))),
+                    ),
                   ),
-                  child: const Center(child: Text("광고 배너 영역", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
-                ),
-              ),
+                  const SizedBox(height: 32),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Text("🔥 인기 이벤트",
+                        style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87)),
+                  ),
+                  const SizedBox(height: 16),
+                  if (isLoading)
+                    Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Center(
+                            child:
+                            CircularProgressIndicator(color: _primaryBlue)))
+                  else
+                    if (loadError != null)
+                      const Padding(
+                          padding: EdgeInsets.all(20.0),
+                          child: Center(
+                              child: Text("❌ 이벤트 로드 오류",
+                                  style: TextStyle(color: Colors.red))))
+                    else
+                      if (upcomingEvents.isNotEmpty)
+                        ...upcomingEvents
+                            .map((e) =>
+                            Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16.0, vertical: 8),
+                                child: _eventCardWidget(e)))
+                            .toList()
+                      else
+                        const Padding(
+                            padding: EdgeInsets.all(20.0),
+                            child: Center(
+                                child: Text("🎉 현재 예정된 공연/행사가 없습니다.",
+                                    style: TextStyle(color: Colors.grey)))),
 
-              const SizedBox(height: 32),
-
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.0),
-                child: Text("🔥 인기 이벤트", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
-              ),
-              const SizedBox(height: 16),
-
-              if (isLoading) Padding(padding: const EdgeInsets.all(20.0), child: Center(child: CircularProgressIndicator(color: _primaryBlue)))
-              else if (loadError != null) const Padding(padding: EdgeInsets.all(20.0), child: Center(child: Text("❌ 이벤트 로드 오류", style: TextStyle(color: Colors.red))))
-              else if (upcomingEvents.isNotEmpty)
-                  ...upcomingEvents.map((e) => Padding(padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8), child: _eventCardWidget(e))).toList()
-                else const Padding(padding: EdgeInsets.all(20.0), child: Center(child: Text("🎉 현재 예정된 공연/행사가 없습니다.", style: TextStyle(color: Colors.grey)))),
-
-              const SizedBox(height: 30),
-            ]),
+                  // ▼▼▼ 수정된 부분: 하단에 충분한 여백 추가 (네비게이션 바 높이 + 여유분) ▼▼▼
+                  const SizedBox(height: 100),
+                ]),
           ),
         ),
       ),
@@ -229,15 +276,25 @@ class _HomePageState extends State<HomePage> {
       onTap: () async {
         final parts = e.id.split(':');
         final contentId = parts.length > 1 ? parts[1] : e.id;
+        String idxName = parts.length > 1 ? parts[0] : "performance";
 
         EventDetail? detail;
         try {
-          detail = await eventService.postGetEventDetail(contentId: contentId);
+          detail = await eventService.postGetEventDetail(
+              contentId: contentId, idxName: idxName);
         } catch (err) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("상세 정보를 불러오지 못했습니다.")));
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("상세 정보를 불러오지 못했습니다.")));
+          }
           return;
         }
-        Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailPage(detail: detail!)));
+        if (mounted) {
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => EventDetailPage(detail: detail!)));
+        }
       },
       child: Card(
         elevation: 0,
@@ -258,29 +315,49 @@ class _HomePageState extends State<HomePage> {
                   width: 90,
                   height: 90,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: 90,
-                    height: 90,
-                    color: Colors.grey[200],
-                    child: Icon(Icons.image_not_supported, color: Colors.grey[400]),
-                  ),
+                  errorBuilder: (_, __, ___) =>
+                      Container(
+                        width: 90,
+                        height: 90,
+                        color: Colors.grey[200],
+                        child: Icon(Icons.image_not_supported,
+                            color: Colors.grey[400]),
+                      ),
                 )
                     : Container(
                   width: 90,
                   height: 90,
                   color: Colors.grey[200],
-                  child: Icon(Icons.image_not_supported, color: Colors.grey[400]),
+                  child: Icon(Icons.image_not_supported,
+                      color: Colors.grey[400]),
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(e.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
-                  const SizedBox(height: 8),
-                  Text(e.place, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey[600])),
-                  const SizedBox(height: 4),
-                  Text("${e.startDate} ~ ${e.endDate}", maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.blue[300], fontSize: 12, fontWeight: FontWeight.w500)),
-                ]),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(e.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87)),
+                      const SizedBox(height: 8),
+                      Text(e.place,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Colors.grey[600])),
+                      const SizedBox(height: 4),
+                      Text("${e.startDate} ~ ${e.endDate}",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: Colors.blue[300],
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500)),
+                    ]),
               ),
             ],
           ),
@@ -291,6 +368,8 @@ class _HomePageState extends State<HomePage> {
 }
 
 class RegionSelectPage extends StatefulWidget {
+  const RegionSelectPage({super.key});
+
   @override
   _RegionSelectPageState createState() => _RegionSelectPageState();
 }
@@ -304,7 +383,9 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
   late final eventService = context.read<EventService>();
 
   final List<String> regions = ['강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '지역 미정'];
-  final List<String> genres = ['국악', '기타', '무용/발레', '뮤지컬/오페라', '연극', '음악/콘서트', '전시'];
+  final List<String> genres = [
+    '행사/축제', '교육/체험', '국악', '기타', '무용/발레', '뮤지컬/오페라', '연극', '음악/콘서트', '전시'
+  ];
 
   final Color _primaryBlue = Colors.blue[200]!;
   final Color _secondaryBlue = Colors.blue[300]!;
@@ -335,7 +416,7 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
 
   Widget _dropdownContainer({required String label, required String? value, required List<String> items, required Function(String?) onChanged}) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
@@ -347,7 +428,7 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
           value: value,
           hint: Text(label, style: TextStyle(color: Colors.grey[500])),
           icon: Icon(Icons.arrow_drop_down, color: _primaryBlue),
-          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: TextStyle(color: Colors.black87)))).toList(),
+          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(color: Colors.black87)))).toList(),
           onChanged: onChanged,
           dropdownColor: Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -361,14 +442,20 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
       onTap: () async {
         final parts = e.id.split(':');
         final contentId = parts.length > 1 ? parts[1] : e.id;
+        String idxName = parts.length > 1 ? parts[0] : "performance";
+
         EventDetail? detail;
         try {
-          detail = await eventService.postGetEventDetail(contentId: contentId);
+          detail = await eventService.postGetEventDetail(contentId: contentId, idxName: idxName);
         } catch (err) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("상세 정보를 불러오지 못했습니다.")));
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("상세 정보를 불러오지 못했습니다.")));
+          }
           return;
         }
-        Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailPage(detail: detail!)));
+        if (mounted) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailPage(detail: detail!)));
+        }
       },
       child: Card(
         elevation: 0,
@@ -387,12 +474,12 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
                   ? Image.network(e.thumbnail, width: 90, height: 90, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(width: 90, height: 90, color: Colors.grey[200], child: Icon(Icons.image_not_supported, color: Colors.grey[400])))
                   : Container(width: 90, height: 90, color: Colors.grey[200], child: Icon(Icons.image_not_supported, color: Colors.grey[400])),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(e.title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
-              SizedBox(height: 8),
+              Text(e.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+              const SizedBox(height: 8),
               Text(e.place, style: TextStyle(color: Colors.grey[600])),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Text("${e.startDate} ~ ${e.endDate}", style: TextStyle(color: _secondaryBlue, fontSize: 12, fontWeight: FontWeight.w500))
             ]))
           ]),
@@ -406,30 +493,31 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
     return Scaffold(
       backgroundColor: _lightBlueBg,
       appBar: AppBar(
-        title: Text("공연/행사 선택", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text("공연/행사 선택", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         centerTitle: true,
         backgroundColor: _primaryBlue,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
         child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24), child: Column(children: [
           Row(children: [
             Expanded(child: _dropdownContainer(label: "지역 선택", value: selectedRegion, items: regions, onChanged: (v) { setState(() => selectedRegion = v); _loadEvents(); })),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
             Expanded(child: _dropdownContainer(label: "장르 선택", value: selectedGenre, items: genres, onChanged: (v) { setState(() => selectedGenre = v); _loadEvents(); })),
           ]),
-          SizedBox(height: 24),
-          if (isLoading) ...[Center(child: CircularProgressIndicator(color: _primaryBlue)), SizedBox(height: 12)],
-          if (!isLoading && lastErrorMessage != null) ...[Text("오류 발생: $lastErrorMessage", style: TextStyle(color: Colors.red)), SizedBox(height: 8)],
-          if ((!isLoading && (selectedRegion == null || selectedGenre == null))) Column(children: [SizedBox(height: 60), Icon(Icons.touch_app_outlined, size: 60, color: _primaryBlue.withOpacity(0.5)), SizedBox(height: 16), Text("지역과 장르를 선택해주세요.", style: TextStyle(color: Colors.grey[600], fontSize: 16))]),
-          if (!isLoading && eventList.isEmpty && selectedRegion != null && selectedGenre != null && lastErrorMessage == null) Column(children: [SizedBox(height: 60), Icon(Icons.event_busy_outlined, size: 60, color: Colors.grey[400]), SizedBox(height: 16), Text("조건에 맞는 공연이 없습니다.", style: TextStyle(color: Colors.grey[600], fontSize: 16)), SizedBox(height: 8), Text("다른 조건으로 선택해보세요.", style: TextStyle(color: Colors.grey[500]))]),
+          const SizedBox(height: 24),
+          if (isLoading) ...[Center(child: CircularProgressIndicator(color: _primaryBlue)), const SizedBox(height: 12)],
+          if (!isLoading && lastErrorMessage != null) ...[Text("오류 발생: $lastErrorMessage", style: const TextStyle(color: Colors.red)), const SizedBox(height: 8)],
+          if ((!isLoading && (selectedRegion == null || selectedGenre == null))) Column(children: [const SizedBox(height: 60), Icon(Icons.touch_app_outlined, size: 60, color: _primaryBlue.withOpacity(0.5)), const SizedBox(height: 16), Text("지역과 장르를 선택해주세요.", style: TextStyle(color: Colors.grey[600], fontSize: 16))]),
+          if (!isLoading && eventList.isEmpty && selectedRegion != null && selectedGenre != null && lastErrorMessage == null) Column(children: [const SizedBox(height: 60), Icon(Icons.event_busy_outlined, size: 60, color: Colors.grey[400]), const SizedBox(height: 16), Text("조건에 맞는 공연이 없습니다.", style: TextStyle(color: Colors.grey[600], fontSize: 16)), const SizedBox(height: 8), Text("다른 조건으로 선택해보세요.", style: TextStyle(color: Colors.grey[500]))]),
           if (!isLoading && eventList.isNotEmpty) Column(children: eventList.map((e) => _eventCard(e)).toList()),
         ])),
       ),
     );
   }
 }
+
 
 class EventDetailPage extends StatelessWidget {
   final EventDetail detail;
@@ -486,7 +574,7 @@ class EventDetailPage extends StatelessWidget {
           child: Row(
             children: [
               Icon(Icons.link, color: _secondaryBlue, size: 20),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(label, style: TextStyle(color: _secondaryBlue, decoration: TextDecoration.underline, fontSize: 15, fontWeight: FontWeight.w500)),
             ],
           )),
@@ -506,7 +594,7 @@ class EventDetailPage extends StatelessWidget {
         backgroundColor: _primaryBlue,
         centerTitle: true,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -528,38 +616,30 @@ class EventDetailPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       child: Image.network(detail.imgUrl, height: 300, width: double.infinity, fit: BoxFit.cover),
                     ),
-
                   const SizedBox(height: 24),
                   Text(_checkValue(detail.title), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87)),
                   const SizedBox(height: 24),
                   Divider(height: 1, color: Colors.grey[200]),
                   const SizedBox(height: 24),
-
                   _detailRow(icon: Icons.calendar_month_outlined, label: "기간", value: "${_formatDate(detail.startDate)} ~ ${_formatDate(detail.endDate)}"),
                   _detailRow(icon: Icons.place_outlined, label: "장소", value: _checkValue(detail.place)),
                   _detailRow(icon: Icons.location_on_outlined, label: "주소", value: _checkValue(detail.placeAddr)),
-
                   const SizedBox(height: 16),
                   Divider(height: 1, color: Colors.grey[200]),
                   const SizedBox(height: 24),
-
                   _detailRow(icon: Icons.category_outlined, label: "장르", value: _checkValue(detail.genre)),
                   _detailRow(icon: Icons.monetization_on_outlined, label: "가격", value: _checkValue(detail.price)),
                   _detailRow(icon: Icons.phone_outlined, label: "연락처", value: _checkValue(detail.phone)),
-
                   const SizedBox(height: 16),
                   Divider(height: 1, color: Colors.grey[200]),
                   const SizedBox(height: 24),
-
                   const Text("상세 정보 링크", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
                   const SizedBox(height: 16),
                   _linkRow(label: '주최측 홈페이지 바로가기', url: detail.url),
                   _linkRow(label: '장소/예매 페이지 바로가기', url: detail.placeUrl),
-
                   const SizedBox(height: 16),
                   Divider(height: 1, color: Colors.grey[200]),
                   const SizedBox(height: 24),
-
                   const Text("행사 위치", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
                   const SizedBox(height: 16),
                   if (hasValidLocation)
@@ -588,7 +668,7 @@ class EventDetailPage extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.location_off, size: 48, color: _primaryBlue),
-                          SizedBox(height: 12),
+                          const SizedBox(height: 12),
                           Text("위치 정보가 제공되지 않습니다.", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w500)),
                         ],
                       )),

@@ -16,8 +16,21 @@ class EventService {
   }) async {
     final dio = dioClient.publicDio;
     const path = '/api/getEvent';
+    String idxName;
+
+    switch(genre){
+      case '행사/축제':
+        idxName= 'festival';
+        break;
+      case '교육/체험':
+        idxName= 'experience';
+        break;
+      default:
+        idxName= 'performance';
+    }
+
     final data = {
-      'idxName': 'performance',
+      'idxName': idxName,
       'area': area,
       'genre': genre,
     };
@@ -51,11 +64,12 @@ class EventService {
 
   Future<EventDetail> postGetEventDetail({
     required String contentId,
+    required String idxName,
   }) async {
     final dio = dioClient.publicDio;
 
     final data = {
-      'idxName': "performance",
+      'idxName': idxName,
       "contentId": contentId,
     };
 

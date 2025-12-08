@@ -1,4 +1,3 @@
-// 파일명: lib/home.dart
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:url_launcher/url_launcher.dart';

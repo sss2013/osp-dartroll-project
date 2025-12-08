@@ -2,11 +2,26 @@
 
 import 'dart:async';
 import 'dart:developer';
-import 'package:dio/dio.dart'; // 💡 [추가] Dio 패키지 임포트
+import 'package:dio/dio.dart';
 
 import 'package:cultureyo/src/features/community/data/comment_model.dart';
-// 💡 [추가] DioClient 임포트
 import 'package:cultureyo/src/core/network/dio_client.dart';
+
+// ⭐ [신규 추가] 댓글 신고 API 응답을 위한 모델 (API 명세 반영)
+class CommentReportResult {
+  final bool repoted; // 토글 후 사용자의 최종 신고 상태 (신고함: true, 신고 안 함: false)
+  final int repoteCount; // 신고 누적 횟수 (서버 필드명 repoteCount 반영)
+
+  CommentReportResult({required this.repoted, required this.repoteCount});
+
+  factory CommentReportResult.fromJson(Map<String, dynamic> json) {
+    return CommentReportResult(
+      repoted: json['repoted'] as bool? ?? false,
+      repoteCount: json['repoteCount'] as int? ?? 0,
+    );
+  }
+}
+
 
 class CommentService {
 
@@ -33,6 +48,7 @@ class CommentService {
 
         if (decodedBody is List) {
           log('✅ [PARSING_SUCCESS] Fetched ${decodedBody.length} comments.', name: 'API_SERVICE_FETCH');
+          // Comment.fromJson에서 repoteCount 및 repoted 필드를 파싱한다고 가정합니다.
           return decodedBody.map<Comment>((json) => Comment.fromJson(json as Map<String, dynamic>)).toList();
         }
       }
@@ -98,17 +114,12 @@ class CommentService {
     final dio = dioClient.dio; // 💡 [변경] 인증된 Dio 인스턴스 사용
     // 💡 [변경] 상대 URL 사용
     final String endpoint = '/api/post/$commentId/commentdelete';
-    // ❌ [삭제] userId 필드가 포함된 requestBody 제거 (백엔드에서 토큰으로 인증)
-    // final Map<String, dynamic> requestBody = {"userId": currentUserId};
 
     log('▶️ [COMMENT_DELETE_REQUEST] URL: $endpoint', name: 'API_SERVICE_COMMENT_DEL');
 
     try {
-      // 💡 [변경] Dio.post 사용. 삭제는 Body 없이 빈 Map을 전달하거나, DELETE 메서드를 사용해야 하지만
-      // 현재 백엔드 엔드포인트가 'commentdelete' POST이므로 빈 Map을 전달하거나 data를 생략합니다.
       final response = await dio.post(
         endpoint,
-        // data: requestBody, // Body 필요 없음 (토큰 인증)
       );
 
       log('Status Code: ${response.statusCode}', name: 'API_SERVICE_COMMENT_DEL');

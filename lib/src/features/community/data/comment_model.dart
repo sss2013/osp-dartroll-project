@@ -13,10 +13,15 @@ class Comment {
   final bool isDeleted;
   final DateTime createdAt;
   final DateTime updatedAt;
+
   // 💡 [추가] 닉네임 필드 (UI 표시를 위해 임시로 처리)
   final String authorNickname;
   final int likes;
   final int replies;
+
+  // ⭐ [신규 추가] 신고 관련 필드
+  final int repoteCount; // 서버에서 받은 신고 누적 횟수 (필드명 repoteCount 반영)
+  final bool repoted; // 현재 유저가 이 댓글을 신고했는지 여부 (필드명 repoted 반영)
 
   Comment({
     required this.id,
@@ -30,6 +35,9 @@ class Comment {
     required this.authorNickname,
     this.likes = 0,
     this.replies = 0,
+    // ⭐ [신규 추가] 생성자에도 반영
+    this.repoteCount = 0,
+    this.repoted = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -44,12 +52,20 @@ class Comment {
     'authorNickname': authorNickname,
     'likes': likes,
     'replies': replies,
+    // ⭐ [신규 추가] toJson에도 반영
+    'repoteCount': repoteCount,
+    'repoted': repoted,
   };
 
 
   factory Comment.fromJson(Map<String, dynamic> json) {
     // 💡 [안전 보강] userId 타입 체크 및 기본값 처리
     final String userId = json['userId'] is String ? json['userId'] as String : 'unknown_user';
+
+    // ⭐ [신규 추가] 신고 필드 파싱 및 기본값 설정
+    final int parsedReportCount = json['repoteCount'] as int? ?? 0;
+    final bool parsedRepoted = json['repoted'] as bool? ?? false;
+
 
     return Comment(
       id: json['_id'] as String,
@@ -64,6 +80,10 @@ class Comment {
       authorNickname: userId.length >= 4 ? '유저_${userId.substring(0, 4)}' : '시스템 유저',
       likes: json['likes'] ?? 0,
       replies: json['replies'] ?? 0,
+
+      // ⭐ [신규 추가] 파싱된 값 적용
+      repoteCount: parsedReportCount,
+      repoted: parsedRepoted,
     );
   }
 }

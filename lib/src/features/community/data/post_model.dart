@@ -6,12 +6,16 @@ class Post {
   final String title;
   final String content;
   final String author;
-  final String authorId; // ⭐ [추가] 작성자 고유 ID 필드
+  final String authorId;
   final String region;
   final String genre;
   final int views;
   final int likes;
   final DateTime date;
+
+  // ⭐ [신고 기능 추가]
+  final bool reported;
+  final int reporteCount;
 
   // 공연 정보 확장 필드
   final String? performanceId;
@@ -24,26 +28,24 @@ class Post {
     required this.title,
     required this.content,
     required this.author,
-    required this.authorId, // ⭐ [추가] 생성자 업데이트
+    required this.authorId,
     required this.region,
     required this.genre,
     required this.views,
     required this.likes,
     required this.date,
+    // ⭐ [신고 필드 필수]
+    required this.reported,
+    required this.reporteCount,
     this.performanceId,
     this.performanceTitle,
     this.performanceUrl,
   });
 
-  // 💡 [API 응답 처리]
-  // category(tap)는 API 응답에 포함되지 않을 수 있으므로,
-  // 호출 시점에 주입받거나(optional) 기본값을 사용합니다.
   factory Post.fromApiJson(Map<String, dynamic> json, {String? category}) {
 
-    // 1. 고유 ID: "_id" 사용
     final String postId = json['_id']?.toString() ?? 'unknown_id';
 
-    // 2. 날짜 파싱: "createdAt" 사용
     DateTime postDate;
     final dateString = json['createdAt'] as String?;
     try {
@@ -54,35 +56,59 @@ class Post {
       postDate = DateTime.now();
     }
 
-    // 3. 카테고리: 인자로 받은 category가 있으면 최우선 사용, 없으면 json['tap'], 없으면 기본값
     final String finalCategory = category ?? json['tap'] as String? ?? 'review';
-
-    // 4. 작성자 ID 추출
-    // API 응답 구조에 따라 'userId' 필드에서 가져온다고 가정합니다.
     final String extractedAuthorId = json['userId'] as String? ?? 'unknown_user';
+
+    // ⭐ [핵심 로직] 좋아요 배열 처리 및 개수만 계산
+    final List<dynamic> likeListDynamic = json['like'] is List ? json['like'] as List<dynamic> : [];
+    final int calculatedLikes = likeListDynamic.length;
+
+    // ⭐ [신규 로직] 신고 관련 필드 파싱
+    final bool isReported = json['reported'] as bool? ?? false;
+    final int calculatedReporteCount = json['reporteCount'] as int? ?? 0;
 
     return Post(
       id: postId,
       category: finalCategory,
 
-      // API 응답 필드 매핑
       title: json['title'] as String? ?? '제목 없음',
       content: json['content'] as String? ?? '',
-      region: json['area'] as String? ?? '지역 미정', // API의 'area'를 'region'으로 매핑
+      region: json['area'] as String? ?? '지역 미정',
       genre: json['genre'] as String? ?? '장르 미정',
       performanceUrl: json['url'] as String?,
       date: postDate,
 
-      // ⭐ [추가] 작성자 고유 ID 매핑
       authorId: extractedAuthorId,
 
-      // 💡 [임의 채움] 디자인 유지를 위한 더미 데이터
       author: json['author'] as String? ?? '익명',
       views: json['views'] as int? ?? 0,
-      likes: json['likes'] as int? ?? 0,
+
+      likes: calculatedLikes,
+
+      // ⭐ [파싱 반영] 신고 필드 반영
+      reported: isReported,
+      reporteCount: calculatedReporteCount,
 
       performanceId: json['performanceId'] as String?,
       performanceTitle: json['performanceTitle'] as String?,
+    );
+  }
+}
+
+/// 게시글 신고 API 응답 모델
+class PostReportStatus {
+  final bool reported;
+  final int reporteCount;
+
+  PostReportStatus({
+    required this.reported,
+    required this.reporteCount,
+  });
+
+  factory PostReportStatus.fromJson(Map<String, dynamic> json) {
+    return PostReportStatus(
+      reported: json['reported'] as bool? ?? false,
+      reporteCount: json['reporteCount'] as int? ?? 0,
     );
   }
 }

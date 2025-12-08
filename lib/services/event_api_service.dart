@@ -2,10 +2,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-// ------------------------------------------------------------------
-// 데이터 모델 (Event, EventDetail)
-// ------------------------------------------------------------------
-
 class Event {
   final String id;
   final String area;
@@ -100,18 +96,12 @@ class EventDetail {
   }
 }
 
-// ------------------------------------------------------------------
-// API 서비스 로직
-// ------------------------------------------------------------------
-
 class EventApiService {
   static String baseUrl = dotenv.env['API_URL'] ?? "https://dartroll-nodejs.onrender.com";
-
-  // 목록 조회
+  
   static Future<List<Event>> postGetEvents({required String area, required String genre}) async {
     final uri = Uri.parse("$baseUrl/api/getEvent");
-
-    // 장르에 따른 idxName 설정 로직
+    
     String idxName = "performance";
     String apiGenre = genre;
 
@@ -147,8 +137,7 @@ class EventApiService {
     }
     return [];
   }
-
-  // 상세 조회
+  
   static Future<EventDetail> postGetEventDetail({required String contentId, String idxName = "performance"}) async {
     final uri = Uri.parse("$baseUrl/api/getEventDetail");
 

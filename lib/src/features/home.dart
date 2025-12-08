@@ -1,11 +1,11 @@
+// 파일명: lib/home.dart
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+import '../../services/event_api_service.dart';
 
 import 'package:cultureyo/src/features/community/presentation/pages/board_page.dart';
 import 'package:cultureyo/src/features/community/presentation/pages/chat_page.dart';
@@ -194,10 +194,7 @@ class _HomePageState extends State<HomePage> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               const SizedBox(height: 24),
               _searchButton(),
-
               const SizedBox(height: 24),
-
-              // 광고 배너
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Container(
@@ -209,21 +206,17 @@ class _HomePageState extends State<HomePage> {
                   child: const Center(child: Text("광고 배너 영역", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
                 ),
               ),
-
               const SizedBox(height: 32),
-
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16.0),
                 child: Text("🔥 인기 이벤트", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
               ),
               const SizedBox(height: 16),
-
               if (isLoading) Padding(padding: const EdgeInsets.all(20.0), child: Center(child: CircularProgressIndicator(color: _primaryBlue)))
               else if (loadError != null) const Padding(padding: EdgeInsets.all(20.0), child: Center(child: Text("❌ 이벤트 로드 오류", style: TextStyle(color: Colors.red))))
               else if (upcomingEvents.isNotEmpty)
                   ...upcomingEvents.map((e) => Padding(padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8), child: _eventCardWidget(e))).toList()
                 else const Padding(padding: EdgeInsets.all(20.0), child: Center(child: Text("🎉 현재 예정된 공연/행사가 없습니다.", style: TextStyle(color: Colors.grey)))),
-
               const SizedBox(height: 30),
             ]),
           ),
@@ -318,18 +311,8 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
   String? lastErrorMessage;
 
   final List<String> regions = ['강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '지역 미정'];
-
-  //장르 리스트에 '행사/축제', '교육/체험' 추가
   final List<String> genres = [
-    '행사/축제',
-    '교육/체험',
-    '국악',
-    '기타',
-    '무용/발레',
-    '뮤지컬/오페라',
-    '연극',
-    '음악/콘서트',
-    '전시'
+    '행사/축제', '교육/체험', '국악', '기타', '무용/발레', '뮤지컬/오페라', '연극', '음악/콘서트', '전시'
   ];
 
   final Color _primaryBlue = Colors.blue[200]!;
@@ -463,144 +446,6 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
   }
 }
 
-class Event {
-  final String id;
-  final String area;
-  final String startDate;
-  final String endDate;
-  final String title;
-  final String place;
-  final String thumbnail;
-  final String sigungu;
-
-  Event({required this.id, required this.area, required this.startDate, required this.endDate, required this.title, required this.place, required this.thumbnail, required this.sigungu});
-
-  factory Event.fromJson(Map<String, dynamic> json) {
-    return Event(
-      id: json['id']?.toString() ?? '',
-      area: json['area'] ?? '',
-      startDate: json['startDate'] ?? '',
-      endDate: json['endDate'] ?? '',
-      title: json['title'] ?? '',
-      place: json['place'] ?? '',
-      thumbnail: json['thumbnail'] ?? '',
-      sigungu: json['sigungu'] ?? '',
-    );
-  }
-}
-
-class EventDetail {
-  final String area;
-  final String div;
-  final String place;
-  final String startDate;
-  final String sigungu;
-  final String gpsY;
-  final String gpsX;
-  final String imgUrl;
-  final String placeUrl;
-  final String url;
-  final String price;
-  final String title;
-  final String phone;
-  final String endDate;
-  final String genre;
-  final String placeAddr;
-
-  EventDetail({required this.area, required this.div, required this.place, required this.startDate, required this.sigungu, required this.gpsY, required this.gpsX, required this.imgUrl, required this.placeUrl, required this.url, required this.price, required this.title, required this.phone, required this.endDate, required this.genre, required this.placeAddr});
-
-  factory EventDetail.fromJson(Map<String, dynamic> json) {
-    return EventDetail(
-      area: json['area'] ?? '',
-      div: json['div'] ?? '',
-      place: json['place'] ?? '',
-      startDate: json['startDate'] ?? '',
-      sigungu: json['sigungu'] ?? '',
-      gpsY: json['gpsY']?.toString() ?? '',
-      gpsX: json['gpsX']?.toString() ?? '',
-      imgUrl: json['imgUrl'] ?? '',
-      placeUrl: json['placeUrl'] ?? '',
-      url: json['url'] ?? '',
-      price: json['price'] ?? '',
-      title: json['title'] ?? '',
-      phone: json['phone'] ?? '',
-      endDate: json['endDate'] ?? '',
-      genre: json['genre'] ?? '',
-      placeAddr: json['placeAddr'] ?? '',
-    );
-  }
-}
-
-class EventApiService {
-  static String baseUrl = dotenv.env['API_URL'] ?? "https://dartroll-nodejs.onrender.com";
-
-  static Future<List<Event>> postGetEvents({required String area, required String genre}) async {
-    final uri = Uri.parse("$baseUrl/api/getEvent");
-
-    String idxName = "performance";
-    String apiGenre = genre;
-
-    if (genre == "행사/축제") {
-      idxName = "festival";
-    } else if (genre == "교육/체험") {
-      idxName = "experience";
-    }
-
-    final body = {
-      "idxName": idxName,
-      "area": area,
-      "genre": apiGenre
-    };
-
-    final res = await http.post(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body));
-    if (res.statusCode != 200) throw Exception("서버 응답 에러: ${res.statusCode}");
-
-    final decodedBody = jsonDecode(res.body);
-
-    if (decodedBody is Map<String, dynamic>) {
-      final dynamic rawData = decodedBody['results'];
-      if (rawData is List) {
-        final events = rawData.map<Event>((e) {
-          if (e is Map<String, dynamic>) return Event.fromJson(e);
-          return Event.fromJson(Map<String, dynamic>.from(e));
-        }).toList();
-        return events;
-      } else {
-        return [];
-      }
-    } else if (decodedBody is List) {
-      return decodedBody.map<Event>((e) => Event.fromJson(Map<String, dynamic>.from(e))).toList();
-    }
-    return [];
-  }
-
-  static Future<EventDetail> postGetEventDetail({required String contentId, String idxName = "performance"}) async {
-    final uri = Uri.parse("$baseUrl/api/getEventDetail");
-
-    final body = {
-      "idxName": idxName,
-      "contentId": contentId
-    };
-
-    final res = await http.post(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body));
-    if (res.statusCode != 200) throw Exception("서버 응답 에러: ${res.statusCode}");
-
-    final decodedBody = jsonDecode(res.body);
-
-    if (decodedBody is Map<String, dynamic>) {
-      final dynamic rawDetailData = decodedBody['detail'] ?? decodedBody['data'];
-      if (rawDetailData is Map<String, dynamic>) return EventDetail.fromJson(rawDetailData);
-      try {
-        return EventDetail.fromJson(decodedBody);
-      } catch (e) {
-        throw Exception("상세 정보 파싱 실패: 서버 응답 구조 확인 필요");
-      }
-    } else {
-      throw Exception("상세 응답 형식 오류: 응답이 Map 형태가 아닙니다.");
-    }
-  }
-}
-
 class EventDetailPage extends StatelessWidget {
   final EventDetail detail;
   final Color _primaryBlue = Colors.blue[200]!;
@@ -698,38 +543,30 @@ class EventDetailPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       child: Image.network(detail.imgUrl, height: 300, width: double.infinity, fit: BoxFit.cover),
                     ),
-
                   const SizedBox(height: 24),
                   Text(_checkValue(detail.title), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87)),
                   const SizedBox(height: 24),
                   Divider(height: 1, color: Colors.grey[200]),
                   const SizedBox(height: 24),
-
                   _detailRow(icon: Icons.calendar_month_outlined, label: "기간", value: "${_formatDate(detail.startDate)} ~ ${_formatDate(detail.endDate)}"),
                   _detailRow(icon: Icons.place_outlined, label: "장소", value: _checkValue(detail.place)),
                   _detailRow(icon: Icons.location_on_outlined, label: "주소", value: _checkValue(detail.placeAddr)),
-
                   const SizedBox(height: 16),
                   Divider(height: 1, color: Colors.grey[200]),
                   const SizedBox(height: 24),
-
                   _detailRow(icon: Icons.category_outlined, label: "장르", value: _checkValue(detail.genre)),
                   _detailRow(icon: Icons.monetization_on_outlined, label: "가격", value: _checkValue(detail.price)),
                   _detailRow(icon: Icons.phone_outlined, label: "연락처", value: _checkValue(detail.phone)),
-
                   const SizedBox(height: 16),
                   Divider(height: 1, color: Colors.grey[200]),
                   const SizedBox(height: 24),
-
                   const Text("상세 정보 링크", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
                   const SizedBox(height: 16),
                   _linkRow(label: '주최측 홈페이지 바로가기', url: detail.url),
                   _linkRow(label: '장소/예매 페이지 바로가기', url: detail.placeUrl),
-
                   const SizedBox(height: 16),
                   Divider(height: 1, color: Colors.grey[200]),
                   const SizedBox(height: 24),
-
                   const Text("행사 위치", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
                   const SizedBox(height: 16),
                   if (hasValidLocation)

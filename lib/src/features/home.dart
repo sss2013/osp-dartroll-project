@@ -22,7 +22,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = [
-    HomePage(),
+    const HomePage(),
     const ChatPage(),
     const BoardPage(),
     const MyInfoPage(),
@@ -129,13 +129,17 @@ class _HomePageState extends State<HomePage> {
         upcomingEvents = allEvents.take(3).toList();
       });
     } catch (e) {
-      setState(() {
-        loadError = "이벤트 로딩 실패";
-      });
+      if (mounted) {
+        setState(() {
+          loadError = "이벤트 로딩 실패";
+        });
+      }
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -144,7 +148,7 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: ElevatedButton(
         onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => RegionSelectPage()));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const RegionSelectPage()));
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: _primaryBlue,
@@ -233,10 +237,11 @@ class _HomePageState extends State<HomePage> {
       onTap: () async {
         final parts = e.id.split(':');
         final contentId = parts.length > 1 ? parts[1] : e.id;
+        String idxName = parts.length > 1 ? parts[0] : "performance";
 
         EventDetail? detail;
         try {
-          detail = await EventApiService.postGetEventDetail(contentId: contentId);
+          detail = await EventApiService.postGetEventDetail(contentId: contentId, idxName: idxName);
         } catch (err) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("상세 정보를 불러오지 못했습니다.")));
@@ -313,7 +318,19 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
   String? lastErrorMessage;
 
   final List<String> regions = ['강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '지역 미정'];
-  final List<String> genres = ['국악', '기타', '무용/발레', '뮤지컬/오페라', '연극', '음악/콘서트', '전시'];
+
+  //장르 리스트에 '행사/축제', '교육/체험' 추가
+  final List<String> genres = [
+    '행사/축제',
+    '교육/체험',
+    '국악',
+    '기타',
+    '무용/발레',
+    '뮤지컬/오페라',
+    '연극',
+    '음악/콘서트',
+    '전시'
+  ];
 
   final Color _primaryBlue = Colors.blue[200]!;
   final Color _secondaryBlue = Colors.blue[300]!;
@@ -370,9 +387,11 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
       onTap: () async {
         final parts = e.id.split(':');
         final contentId = parts.length > 1 ? parts[1] : e.id;
+        String idxName = parts.length > 1 ? parts[0] : "performance";
+
         EventDetail? detail;
         try {
-          detail = await EventApiService.postGetEventDetail(contentId: contentId);
+          detail = await EventApiService.postGetEventDetail(contentId: contentId, idxName: idxName);
         } catch (err) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("상세 정보를 불러오지 못했습니다.")));
@@ -517,7 +536,21 @@ class EventApiService {
 
   static Future<List<Event>> postGetEvents({required String area, required String genre}) async {
     final uri = Uri.parse("$baseUrl/api/getEvent");
-    final body = {"idxName": "performance", "area": area, "genre": genre};
+
+    String idxName = "performance";
+    String apiGenre = genre;
+
+    if (genre == "행사/축제") {
+      idxName = "festival";
+    } else if (genre == "교육/체험") {
+      idxName = "experience";
+    }
+
+    final body = {
+      "idxName": idxName,
+      "area": area,
+      "genre": apiGenre
+    };
 
     final res = await http.post(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body));
     if (res.statusCode != 200) throw Exception("서버 응답 에러: ${res.statusCode}");
@@ -541,9 +574,13 @@ class EventApiService {
     return [];
   }
 
-  static Future<EventDetail> postGetEventDetail({required String contentId}) async {
+  static Future<EventDetail> postGetEventDetail({required String contentId, String idxName = "performance"}) async {
     final uri = Uri.parse("$baseUrl/api/getEventDetail");
-    final body = {"idxName": "performance", "contentId": contentId};
+
+    final body = {
+      "idxName": idxName,
+      "contentId": contentId
+    };
 
     final res = await http.post(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body));
     if (res.statusCode != 200) throw Exception("서버 응답 에러: ${res.statusCode}");

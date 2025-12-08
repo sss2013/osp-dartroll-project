@@ -23,8 +23,10 @@ class PostDetailPage extends StatefulWidget {
 }
 
 class _PostDetailPageState extends State<PostDetailPage> {
-  // ⭐ [수정] _isLiked 제거, likes만 유지
   late int likes;
+  // ⭐ [신규 추가] 게시물 신고 상태 변수
+  late bool _isPostReported;
+  late int _postReportCount;
 
   final TextEditingController _commentController = TextEditingController();
   final FocusNode _commentFocusNode = FocusNode();
@@ -53,8 +55,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
   @override
   void initState() {
     super.initState();
-    // ⭐ [수정] PostModel에서 가져온 초기값으로 likes만 설정
     likes = widget.post.likes;
+    // ⭐ [추가] 초기 게시물 신고 상태 설정
+    _isPostReported = widget.post.reported;
+    _postReportCount = widget.post.reporteCount;
   }
 
   @override
@@ -220,7 +224,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
-  // ⭐ [수정] 좋아요 토글 API 호출 (좋아요 개수만 업데이트)
+  // 게시물 좋아요 토글 API 호출 (변경 없음)
   Future<void> _toggleLikeApi() async {
     if (_currentUserId == null || _isUserIdLoading || _currentUserId == 'guest_unauth') {
       _showSnackbar('로그인된 사용자만 추천할 수 있습니다.', duration: const Duration(seconds: 2));
@@ -233,7 +237,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
       log('▶️ [POST_LIKE_TOGGLE_INIT] Post ID: $postId, Category: $category', name: 'UI_ACTION_LIKE');
 
-      // PostService의 toggleLike 호출 (이제 int(likesCount)를 반환)
       final int newLikesCount = await _postService.toggleLike(
         postId,
         category,
@@ -241,7 +244,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
       if (mounted) {
         setState(() {
-          likes = newLikesCount; // ⭐ [수정] Likes Count만 업데이트
+          likes = newLikesCount;
         });
 
         _showSnackbar('게시물 추천 정보가 업데이트되었습니다. (새로고침 필요)', duration: const Duration(seconds: 1));
@@ -256,6 +259,207 @@ class _PostDetailPageState extends State<PostDetailPage> {
     } catch (e) {
       log('🚨 [LIKE_TOGGLE_ERROR] Exception: $e', name: 'POST_LIKE');
       _showSnackbar('추천 처리 중 예상치 못한 오류 발생');
+    }
+  }
+
+  // 게시물 신고 API 호출 및 UI 처리 (변경 없음)
+  Future<void> _toggleReportPostApi() async {
+    // 1. 권한 확인 (로그인 필요)
+    if (_currentUserId == null || _isUserIdLoading || _currentUserId == 'guest_unauth') {
+      _showSnackbar('로그인된 사용자만 게시글을 신고할 수 있습니다.', duration: const Duration(seconds: 2));
+      return;
+    }
+
+    // 2. 중복 신고 확인
+    if (_isPostReported) {
+      _showSnackbar('이미 신고한 게시글입니다.');
+      return;
+    }
+
+    try {
+      final result = await _postService.toggleReportPost(
+        widget.post.id,
+        widget.post.category, // body: {"tap": category} 전송
+      );
+
+      if (mounted) {
+        // 1. 로컬 상태 업데이트
+        setState(() {
+          _isPostReported = result.reported;
+          _postReportCount = result.reporteCount;
+        });
+
+        // 2. 스낵바 메시지 출력
+        String message;
+        if (result.reported) {
+          message = '게시글을 신고 처리했습니다.';
+        } else {
+          message = '신고 처리 중 오류가 발생했습니다.';
+        }
+
+        _showSnackbar('$message (누적 신고: ${result.reporteCount}회)', duration: const Duration(seconds: 2));
+      }
+
+    } on DioException catch (e) {
+      log('🚨 [POST_REPORT_ERROR] DioException: ${e.message}', name: 'POST_REPORT');
+      if (mounted) {
+        final errorMessage = e.response?.data['message']?.toString() ?? '네트워크 오류';
+        _showSnackbar('게시글 신고 처리 중 오류 발생: $errorMessage');
+      }
+    } catch (e) {
+      log('🚨 [POST_REPORT_ERROR] Exception: $e', name: 'POST_REPORT');
+      _showSnackbar('게시글 신고 처리 중 예상치 못한 오류 발생');
+    }
+  }
+
+  // ⭐ [신규 추가] 댓글 좋아요 상태를 로컬에서 업데이트하는 헬퍼 함수
+  void _updateCommentLikeStatus(String commentId, int newLikesCount, bool isLiked) {
+    final int index = _comments.indexWhere((c) => c.id == commentId);
+    if (index != -1) {
+      final oldComment = _comments[index];
+      final updatedComment = Comment(
+        id: oldComment.id,
+        postId: oldComment.postId,
+        userId: oldComment.userId,
+        text: oldComment.text,
+        parentId: oldComment.parentId,
+        isDeleted: oldComment.isDeleted,
+        createdAt: oldComment.createdAt,
+        updatedAt: oldComment.updatedAt,
+        authorNickname: oldComment.authorNickname,
+
+        // ⭐ [업데이트] 좋아요 필드
+        likes: newLikesCount,
+        liked: isLiked,
+
+        replies: oldComment.replies,
+        reporteCount: oldComment.reporteCount,
+        reported: oldComment.reported,
+      );
+
+      setState(() {
+        _comments[index] = updatedComment;
+      });
+    }
+  }
+
+
+  // 댓글 신고 상태를 로컬에서 업데이트하는 헬퍼 함수 (기존)
+  void _updateCommentReportStatus(String commentId, int newReporteCount, bool isReported) {
+    final int index = _comments.indexWhere((c) => c.id == commentId);
+    if (index != -1) {
+      final oldComment = _comments[index];
+      final updatedComment = Comment(
+        id: oldComment.id,
+        postId: oldComment.postId,
+        userId: oldComment.userId,
+        text: oldComment.text,
+        parentId: oldComment.parentId,
+        isDeleted: oldComment.isDeleted,
+        createdAt: oldComment.createdAt,
+        updatedAt: oldComment.updatedAt,
+        authorNickname: oldComment.authorNickname,
+        likes: oldComment.likes,
+        // ⭐ [유지] 좋아요 필드
+        liked: oldComment.liked,
+        replies: oldComment.replies,
+        reporteCount: newReporteCount,
+        reported: isReported,
+      );
+
+      setState(() {
+        _comments[index] = updatedComment;
+      });
+    }
+  }
+
+
+  // ⭐ [신규 추가] 댓글 좋아요 토글 API 호출 및 UI 처리
+  Future<void> _toggleLikeCommentApi(Comment comment) async {
+    // 1. 권한 확인 (로그인 필요)
+    if (_currentUserId == null || _isUserIdLoading || _currentUserId == 'guest_unauth') {
+      _showSnackbar('로그인된 사용자만 댓글을 추천할 수 있습니다.', duration: const Duration(seconds: 2));
+      return;
+    }
+
+    // 2. 작성자 본인의 댓글은 좋아요 불가능
+    if (_currentUserId == comment.userId) {
+      _showSnackbar('본인이 작성한 댓글에는 좋아요를 누를 수 없습니다.', duration: const Duration(seconds: 2));
+      return;
+    }
+
+
+    try {
+      final result = await _commentService.toggleCommentLike(comment.id);
+
+      if (mounted) {
+        // 1. 로컬 상태 업데이트
+        _updateCommentLikeStatus(comment.id, result.likeCount, result.liked);
+
+        // 2. 스낵바 메시지 출력
+        final String action = result.liked ? '좋아요' : '좋아요 취소';
+        _showSnackbar('댓글에 $action 처리되었습니다. (현재 ${result.likeCount}개)', duration: const Duration(seconds: 1));
+      }
+
+    } on DioException catch (e) {
+      log('🚨 [COMMENT_LIKE_ERROR] DioException: ${e.message}', name: 'COMMENT_LIKE');
+      if (mounted) {
+        final errorMessage = e.response?.data['message']?.toString() ?? '네트워크 오류';
+        _showSnackbar('댓글 좋아요 처리 중 오류 발생: $errorMessage');
+      }
+    } catch (e) {
+      log('🚨 [COMMENT_LIKE_ERROR] Exception: $e', name: 'COMMENT_LIKE');
+      _showSnackbar('댓글 좋아요 처리 중 예상치 못한 오류 발생');
+    }
+  }
+
+
+  // 댓글 신고 API 호출 및 UI 처리 (기존)
+  Future<void> _toggleReportApi(Comment comment) async {
+    if (_currentUserId == null || _isUserIdLoading || _currentUserId == 'guest_unauth') {
+      _showSnackbar('로그인된 사용자만 신고할 수 있습니다.', duration: const Duration(seconds: 2));
+      return;
+    }
+
+    if (comment.reported) {
+      _showSnackbar('이미 신고한 댓글입니다.');
+      return;
+    }
+
+    if (comment.reporteCount >= 3) {
+      _showSnackbar('이미 차단된 댓글입니다. 추가 신고할 수 없습니다.');
+      return;
+    }
+
+
+    try {
+      final result = await _commentService.toggleCommentReport(comment.id);
+
+      if (mounted) {
+
+        _updateCommentReportStatus(comment.id, result.reporteCount, result.reported);
+
+        String message;
+        if (result.reported) {
+          message = '댓글을 신고 처리했습니다.';
+          if (result.reporteCount >= 3) {
+            message += ' (누적 신고 3회 이상: 댓글이 차단됩니다.)';
+          }
+        } else {
+          message = '이미 신고한 댓글입니다.';
+        }
+        _showSnackbar(message, duration: const Duration(seconds: 2));
+      }
+
+    } on DioException catch (e) {
+      log('🚨 [REPORT_ERROR] DioException: ${e.message}', name: 'COMMENT_REPORT');
+      if (mounted) {
+        final errorMessage = e.response?.data['message']?.toString() ?? '네트워크 오류';
+        _showSnackbar('신고 처리 중 오류 발생: $errorMessage');
+      }
+    } catch (e) {
+      log('🚨 [REPORT_ERROR] Exception: $e', name: 'COMMENT_REPORT');
+      _showSnackbar('신고 처리 중 예상치 못한 오류 발생');
     }
   }
 
@@ -416,14 +620,37 @@ class _PostDetailPageState extends State<PostDetailPage> {
     );
   }
 
+  // 댓글 아이템 빌드 함수
   Widget _buildCommentItem(Comment comment) {
     final bool isDeleted = comment.isDeleted;
-    final String displayText = isDeleted ? '삭제된 댓글입니다.' : comment.text;
-    final Color textColor = isDeleted ? Colors.grey : Colors.black;
+    final bool isBlockedByReport = comment.reporteCount >= 3;
+    final bool isLikedByMe = comment.liked;
+
+    final String displayText = isDeleted
+        ? '삭제된 댓글입니다.'
+        : (isBlockedByReport
+        ? '관리자에 의해 차단된 댓글입니다.'
+        : comment.text);
+
+    final Color textColor = isDeleted ? Colors.grey : (isBlockedByReport ? Colors.red.shade400 : Colors.black);
+
     final double leftPadding = comment.parentId != null ? 36.0 : 0.0;
     final bool isReplyingToThis = _replyingToCommentId == comment.id;
 
-    final bool canDeleteComment = !isDeleted && _currentUserId != null && comment.userId == _currentUserId;
+    // 댓글 삭제 가능 조건: 삭제되지 않았고, 현재 로그인 유저가 작성자일 때
+    final bool isMyComment = !isDeleted && _currentUserId != null && comment.userId == _currentUserId;
+    final bool canDeleteComment = isMyComment;
+
+    // 댓글 신고 가능 조건: 삭제되지 않았고, 차단되지 않았고, 내 댓글이 아니며, 아직 신고하지 않은 경우
+    final bool canReportComment = !isDeleted && !isBlockedByReport && !isMyComment && !comment.reported;
+
+    // 좋아요 버튼 표시 여부: 삭제/차단되지 않은 댓글
+    final bool showLikeButton = !isDeleted && !isBlockedByReport;
+
+    // 좋아요 버튼 아이콘과 색상
+    final IconData likeIcon = isLikedByMe ? Icons.thumb_up : Icons.thumb_up_outlined;
+    final Color likeColor = isLikedByMe ? Colors.blue : Colors.grey;
+
 
     return Padding(
       padding: EdgeInsets.only(left: leftPadding, top: 6, bottom: 6),
@@ -464,18 +691,23 @@ class _PostDetailPageState extends State<PostDetailPage> {
               padding: const EdgeInsets.only(left: 44),
               child: Text(
                 displayText,
-                style: TextStyle(color: textColor, fontSize: 14, fontStyle: isDeleted ? FontStyle.italic : FontStyle.normal),
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 14,
+                  fontStyle: (isDeleted || isBlockedByReport) ? FontStyle.italic : FontStyle.normal,
+                  fontWeight: isBlockedByReport ? FontWeight.bold : FontWeight.normal,
+                ),
               ),
             ),
             const SizedBox(height: 8),
 
-            // 답글/추천/삭제/신고 버튼 영역
+            // 답글/좋아요/삭제/신고 버튼 영역
             Padding(
               padding: const EdgeInsets.only(left: 44),
               child: Row(
                 children: [
                   // 답글 작성 버튼
-                  if (!isDeleted && comment.parentId == null)
+                  if (!isDeleted && !isBlockedByReport && comment.parentId == null)
                     TextButton(
                       onPressed: () => _setReplyingTo(comment),
                       child: const Text('답글 작성', style: TextStyle(fontSize: 12, color: Colors.blue)),
@@ -485,7 +717,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       ),
                     ),
 
-                  if (!isDeleted && comment.parentId == null && isReplyingToThis)
+                  if (!isDeleted && !isBlockedByReport && comment.parentId == null)
                     const SizedBox(width: 8),
 
                   // 답글 모드 해제 버튼
@@ -495,6 +727,20 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       child: const Text('답글 취소', style: TextStyle(fontSize: 12, color: Colors.orange)),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                        minimumSize: const Size(0, 0),
+                      ),
+                    ),
+
+                  // ⭐ [신규 추가] 좋아요 버튼
+                  if (showLikeButton)
+                    TextButton.icon(
+                      onPressed: () => _toggleLikeCommentApi(comment),
+                      icon: Icon(likeIcon, size: 14, color: likeColor),
+                      label: Text(
+                          '${comment.likes}',
+                          style: TextStyle(fontSize: 12, color: likeColor, fontWeight: isLikedByMe ? FontWeight.bold : FontWeight.normal)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                         minimumSize: const Size(0, 0),
                       ),
                     ),
@@ -534,15 +780,25 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   const SizedBox(width: 8),
 
                   // 신고하기 버튼
-                  if (!isDeleted)
+                  if (canReportComment)
                     TextButton.icon(
-                      onPressed: () {},
+                      onPressed: () => _toggleReportApi(comment),
                       icon: const Icon(Icons.report, size: 14, color: Colors.red),
                       label: const Text('신고하기', style: TextStyle(fontSize: 12, color: Colors.red)),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
                         minimumSize: const Size(0, 0),
                       ),
+                    ),
+                  // 이미 신고한 경우 표시
+                  if (comment.reported && !isDeleted && !isBlockedByReport)
+                    Text(
+                        '신고 완료',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.red.shade700,
+                            fontWeight: FontWeight.bold
+                        )
                     ),
                 ],
               ),
@@ -731,11 +987,64 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         ],
                       ),
                     ),
+
                   Text(widget.post.content, style: const TextStyle(fontSize: 16)),
 
                   _buildPerformanceCard(context),
 
                   const SizedBox(height: 16),
+
+                  // ⭐ [신규 추가] 게시물 신고 버튼
+                  // 작성자가 아니며, 이미 신고하지 않은 경우에만 표시
+                  if (!_isAuthor && !_isPostReported)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          GestureDetector(
+                            onTap: _toggleReportPostApi,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.red[100],
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.report, size: 20, color: Colors.red[700]),
+                                  const SizedBox(width: 6),
+                                  const Text(
+                                    '신고하기',
+                                    style: TextStyle(fontSize: 14, color: Colors.red),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // 이미 신고한 경우 메시지 표시
+                  if (_isPostReported)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            '이미 신고한 게시글입니다. (누적 신고: $_postReportCount)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.red.shade700,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
 
                   Center(
@@ -744,14 +1053,12 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          // ⭐ [수정] 좋아요 여부 UI가 불필요하므로, 기본 색상 사용
                           color: Colors.grey[200],
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // ⭐ [수정] 아이콘을 채워진 아이콘이 아닌 기본 아이콘으로 고정
                             const Icon(
                               Icons.thumb_up_outlined,
                               size: 20,

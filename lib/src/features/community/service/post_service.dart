@@ -212,4 +212,44 @@ class PostService {
       rethrow;
     }
   }
+  // ⭐ [추가] 7. 게시글 신고 API
+  Future<PostReportStatus> toggleReportPost(String postId, String tapCategory) async {
+    final dio = dioClient.dio; // 토큰 필요 (인증된 Dio 클라이언트)
+    final String endpoint = '/api/post/$postId/report';
+
+    final Map<String, dynamic> requestBody = {
+      "tap": tapCategory, // 카테고리 (리뷰/친구찾기)를 body에 담아 전송
+    };
+
+    log('▶️ [POST_REPORT_REQUEST] URL: $endpoint', name: 'API_SERVICE_POST_REPORT');
+
+    try {
+      final response = await dio.post(
+        endpoint,
+        data: requestBody,
+      );
+
+      log('Status Code: ${response.statusCode}', name: 'API_SERVICE_POST_REPORT');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> responseData = response.data;
+
+        final PostReportStatus reportStatus = PostReportStatus.fromJson(responseData);
+
+        log('✅ [POST_REPORT_SUCCESS] Reported: ${reportStatus.reported}, Count: ${reportStatus.reporteCount}', name: 'API_SERVICE_POST_REPORT');
+
+        return reportStatus;
+
+      } else {
+        log('🚨 [POST_REPORT_FAIL_RESPONSE] Body: ${response.data}', name: 'API_SERVICE_POST_REPORT');
+        throw Exception('게시글 신고 처리 실패 (상태 코드: ${response.statusCode})');
+      }
+    } on DioException catch (e) {
+      log('🚨 [DIO_EXCEPTION] Report failed: ${e.message}', name: 'API_SERVICE_POST_REPORT');
+      throw Exception('게시글 신고 실패: ${e.response?.data['message']?.toString() ?? e.message}');
+    } catch (e) {
+      log('🚨 [REPORT_ERROR] Exception: $e', name: 'API_SERVICE_POST_REPORT');
+      rethrow;
+    }
+  }
 }

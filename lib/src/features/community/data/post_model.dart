@@ -12,7 +12,10 @@ class Post {
   final int views;
   final int likes;
   final DateTime date;
-  // isLiked 필드 제거됨
+
+  // ⭐ [신고 기능 추가]
+  final bool reported;
+  final int reporteCount;
 
   // 공연 정보 확장 필드
   final String? performanceId;
@@ -31,6 +34,9 @@ class Post {
     required this.views,
     required this.likes,
     required this.date,
+    // ⭐ [신고 필드 필수]
+    required this.reported,
+    required this.reporteCount,
     this.performanceId,
     this.performanceTitle,
     this.performanceUrl,
@@ -55,9 +61,11 @@ class Post {
 
     // ⭐ [핵심 로직] 좋아요 배열 처리 및 개수만 계산
     final List<dynamic> likeListDynamic = json['like'] is List ? json['like'] as List<dynamic> : [];
-
-    // 1. 좋아요 개수 (likes): 배열의 길이
     final int calculatedLikes = likeListDynamic.length;
+
+    // ⭐ [신규 로직] 신고 관련 필드 파싱
+    final bool isReported = json['reported'] as bool? ?? false;
+    final int calculatedReporteCount = json['reporteCount'] as int? ?? 0;
 
     return Post(
       id: postId,
@@ -76,10 +84,31 @@ class Post {
       views: json['views'] as int? ?? 0,
 
       likes: calculatedLikes,
-      // isLiked 필드 제거됨
+
+      // ⭐ [파싱 반영] 신고 필드 반영
+      reported: isReported,
+      reporteCount: calculatedReporteCount,
 
       performanceId: json['performanceId'] as String?,
       performanceTitle: json['performanceTitle'] as String?,
+    );
+  }
+}
+
+/// 게시글 신고 API 응답 모델
+class PostReportStatus {
+  final bool reported;
+  final int reporteCount;
+
+  PostReportStatus({
+    required this.reported,
+    required this.reporteCount,
+  });
+
+  factory PostReportStatus.fromJson(Map<String, dynamic> json) {
+    return PostReportStatus(
+      reported: json['reported'] as bool? ?? false,
+      reporteCount: json['reporteCount'] as int? ?? 0,
     );
   }
 }

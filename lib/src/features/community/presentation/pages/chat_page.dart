@@ -1,4 +1,6 @@
+import 'package:cultureyo/src/features/community/service/chat_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 class UserProfile {
   final String id;
   final String name;
@@ -31,8 +33,6 @@ class ChatRoom {
     required this.messages,
   });
 }
-
-
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -154,15 +154,27 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     String minute = date.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
+  late final ChatService _chatService;
+
   @override
   void initState() {// 초기화
     super.initState();
     currentRoom = widget.chatRoom;
+    _chatService = context.read<ChatService>();
   }
 
-  void _sendMessage() {
+  void _sendMessage() async {
     final text = _controller.text.trim();//공백제거
     if (text.isEmpty) return;
+
+    try {
+      await _chatService.sendMessage(currentRoom.id, text);
+    } catch(e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('메시지 전송에 실패했습니다: $e')),
+      );
+      return;
+    }
 
     setState(() {
       currentRoom.messages.add(Message(sender: '나', text: text,time: DateTime.now()));//메세지를 추가 지금은 그냥 리스트에 추가

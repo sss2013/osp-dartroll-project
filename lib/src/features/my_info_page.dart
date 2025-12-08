@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 class MyInfoPage extends StatelessWidget {
   const MyInfoPage({super.key});
 
-  final Color _primaryBlue = const Color(0xFF90CAF9); 
-  final Color _lightBlueBg = const Color(0xFFE3F2FD); 
-  final Color _borderColor = const Color(0xFFBBDEFB); 
+  final Color _primaryBlue = const Color(0xFF90CAF9);
+  final Color _lightBlueBg = const Color(0xFFE3F2FD);
+  final Color _borderColor = const Color(0xFFBBDEFB);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _lightBlueBg, 
+      backgroundColor: _lightBlueBg,
       appBar: AppBar(
         title: const Text(
           "내 정보",
@@ -30,14 +30,14 @@ class MyInfoPage extends StatelessWidget {
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: _primaryBlue, width: 2), 
+                    border: Border.all(color: _primaryBlue, width: 2),
                     color: Colors.white,
                   ),
                   child: const CircleAvatar(
                     radius: 50,
                     backgroundColor: Colors.grey,
                     backgroundImage: AssetImage("assets/images/profile_default.png"),
-                    child: null, 
+                    child: null,
                   ),
                 ),
               ),
@@ -54,7 +54,7 @@ class MyInfoPage extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                "문화생활을 즐기는 여행자", 
+                "문화생활을 즐기는 여행자",
                 style: TextStyle(color: Colors.grey[600], fontSize: 14),
               ),
 
@@ -62,10 +62,10 @@ class MyInfoPage extends StatelessWidget {
 
               Card(
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24), 
+                  borderRadius: BorderRadius.circular(24),
                   side: BorderSide(color: _borderColor, width: 1),
                 ),
-                elevation: 0, 
+                elevation: 0,
                 color: Colors.white,
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -109,13 +109,13 @@ class MyInfoPage extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white, 
-                    foregroundColor: Colors.red[300], 
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.red[300],
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(color: Colors.red[100]!), 
+                      side: BorderSide(color: Colors.red[100]!),
                     ),
                   ),
                   onPressed: () {
@@ -158,7 +158,7 @@ class MyInfoPage extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: _lightBlueBg, 
+            color: _lightBlueBg,
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: _primaryBlue, size: 22),
@@ -184,7 +184,7 @@ class MyInfoPage extends StatelessWidget {
             ],
           ),
         ),
-        Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey[300]), 
+        Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey[300]),
       ],
     );
   }

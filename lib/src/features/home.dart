@@ -1,13 +1,14 @@
+import 'package:cultureyo/src/features/event/data/event_detail.dart';
+import 'package:cultureyo/src/features/event/service/event_service.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-
 import 'package:cultureyo/src/features/community/presentation/pages/board_page.dart';
 import 'package:cultureyo/src/features/community/presentation/pages/chat_page.dart';
+import 'event/data/event.dart';
+import 'package:provider/provider.dart';
 import 'my_info_page.dart';
 
 class MainScreen extends StatefulWidget {
@@ -101,6 +102,7 @@ class _HomePageState extends State<HomePage> {
   List<Event> upcomingEvents = [];
   bool isLoading = false;
   String? loadError;
+  late final eventService = context.read<EventService>();
 
   final Color _primaryBlue = Colors.blue[200]!;
   final Color _lightBlueBg = Colors.blue[50]!;
@@ -118,7 +120,7 @@ class _HomePageState extends State<HomePage> {
     });
 
     try {
-      final allEvents = await EventApiService.postGetEvents(area: "서울", genre: "전시");
+      final allEvents = await eventService.postGetEvents(area: "서울", genre: "전시");
       allEvents.shuffle();
       setState(() {
         upcomingEvents = allEvents.take(3).toList();
@@ -230,7 +232,7 @@ class _HomePageState extends State<HomePage> {
 
         EventDetail? detail;
         try {
-          detail = await EventApiService.postGetEventDetail(contentId: contentId);
+          detail = await eventService.postGetEventDetail(contentId: contentId);
         } catch (err) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("상세 정보를 불러오지 못했습니다.")));
           return;
@@ -299,6 +301,7 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
   List<Event> eventList = [];
   bool isLoading = false;
   String? lastErrorMessage;
+  late final eventService = context.read<EventService>();
 
   final List<String> regions = ['강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '지역 미정'];
   final List<String> genres = ['국악', '기타', '무용/발레', '뮤지컬/오페라', '연극', '음악/콘서트', '전시'];
@@ -315,7 +318,7 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
       eventList = [];
     });
     try {
-      final list = await EventApiService.postGetEvents(area: selectedRegion!, genre: selectedGenre!);
+      final list = await eventService.postGetEvents(area: selectedRegion!, genre: selectedGenre!);
       setState(() {
         eventList = list;
       });
@@ -360,7 +363,7 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
         final contentId = parts.length > 1 ? parts[1] : e.id;
         EventDetail? detail;
         try {
-          detail = await EventApiService.postGetEventDetail(contentId: contentId);
+          detail = await eventService.postGetEventDetail(contentId: contentId);
         } catch (err) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("상세 정보를 불러오지 못했습니다.")));
           return;
@@ -428,126 +431,6 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
   }
 }
 
-class Event {
-  final String id;
-  final String area;
-  final String startDate;
-  final String endDate;
-  final String title;
-  final String place;
-  final String thumbnail;
-  final String sigungu;
-
-  Event({required this.id, required this.area, required this.startDate, required this.endDate, required this.title, required this.place, required this.thumbnail, required this.sigungu});
-
-  factory Event.fromJson(Map<String, dynamic> json) {
-    return Event(
-      id: json['id']?.toString() ?? '',
-      area: json['area'] ?? '',
-      startDate: json['startDate'] ?? '',
-      endDate: json['endDate'] ?? '',
-      title: json['title'] ?? '',
-      place: json['place'] ?? '',
-      thumbnail: json['thumbnail'] ?? '',
-      sigungu: json['sigungu'] ?? '',
-    );
-  }
-}
-
-class EventDetail {
-  final String area;
-  final String div;
-  final String place;
-  final String startDate;
-  final String sigungu;
-  final String gpsY;
-  final String gpsX;
-  final String imgUrl;
-  final String placeUrl;
-  final String url;
-  final String price;
-  final String title;
-  final String phone;
-  final String endDate;
-  final String genre;
-  final String placeAddr;
-
-  EventDetail({required this.area, required this.div, required this.place, required this.startDate, required this.sigungu, required this.gpsY, required this.gpsX, required this.imgUrl, required this.placeUrl, required this.url, required this.price, required this.title, required this.phone, required this.endDate, required this.genre, required this.placeAddr});
-
-  factory EventDetail.fromJson(Map<String, dynamic> json) {
-    return EventDetail(
-      area: json['area'] ?? '',
-      div: json['div'] ?? '',
-      place: json['place'] ?? '',
-      startDate: json['startDate'] ?? '',
-      sigungu: json['sigungu'] ?? '',
-      gpsY: json['gpsY']?.toString() ?? '',
-      gpsX: json['gpsX']?.toString() ?? '',
-      imgUrl: json['imgUrl'] ?? '',
-      placeUrl: json['placeUrl'] ?? '',
-      url: json['url'] ?? '',
-      price: json['price'] ?? '',
-      title: json['title'] ?? '',
-      phone: json['phone'] ?? '',
-      endDate: json['endDate'] ?? '',
-      genre: json['genre'] ?? '',
-      placeAddr: json['placeAddr'] ?? '',
-    );
-  }
-}
-
-class EventApiService {
-  static const String baseUrl = "https://dartroll-nodejs.onrender.com";
-
-  static Future<List<Event>> postGetEvents({required String area, required String genre}) async {
-    final uri = Uri.parse("$baseUrl/api/getEvent");
-    final body = {"idxName": "performance", "area": area, "genre": genre};
-
-    final res = await http.post(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body));
-    if (res.statusCode != 200) throw Exception("서버 응답 에러: ${res.statusCode}");
-
-    final decodedBody = jsonDecode(res.body);
-
-    if (decodedBody is Map<String, dynamic>) {
-      final dynamic rawData = decodedBody['results'];
-      if (rawData is List) {
-        final events = rawData.map<Event>((e) {
-          if (e is Map<String, dynamic>) return Event.fromJson(e);
-          return Event.fromJson(Map<String, dynamic>.from(e));
-        }).toList();
-        return events;
-      } else {
-        return [];
-      }
-    } else if (decodedBody is List) {
-      return decodedBody.map<Event>((e) => Event.fromJson(Map<String, dynamic>.from(e))).toList();
-    }
-    return [];
-  }
-
-  static Future<EventDetail> postGetEventDetail({required String contentId}) async {
-    final uri = Uri.parse("$baseUrl/api/getEventDetail");
-    final body = {"idxName": "performance", "contentId": contentId};
-
-    final res = await http.post(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body));
-    if (res.statusCode != 200) throw Exception("서버 응답 에러: ${res.statusCode}");
-
-    final decodedBody = jsonDecode(res.body);
-
-    if (decodedBody is Map<String, dynamic>) {
-      final dynamic rawDetailData = decodedBody['detail'] ?? decodedBody['data'];
-      if (rawDetailData is Map<String, dynamic>) return EventDetail.fromJson(rawDetailData);
-      try {
-        return EventDetail.fromJson(decodedBody);
-      } catch (e) {
-        throw Exception("상세 정보 파싱 실패: 서버 응답 구조 확인 필요");
-      }
-    } else {
-      throw Exception("상세 응답 형식 오류: 응답이 Map 형태가 아닙니다.");
-    }
-  }
-}
-
 class EventDetailPage extends StatelessWidget {
   final EventDetail detail;
   final Color _primaryBlue = Colors.blue[200]!;
@@ -591,7 +474,7 @@ class EventDetailPage extends StatelessWidget {
   }
 
   Widget _linkRow({required String label, required String url}) {
-    if (url.isEmpty) return SizedBox.shrink();
+    if (url.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: GestureDetector(

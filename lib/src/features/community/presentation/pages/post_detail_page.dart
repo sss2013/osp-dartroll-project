@@ -293,6 +293,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
         String message;
         if (result.reported) {
           message = '게시글을 신고 처리했습니다.';
+          if (_postReportCount >= 3) {
+            message += ' (게시물 차단이 적용되었습니다.)';
+          }
         } else {
           message = '신고 처리 중 오류가 발생했습니다.';
         }
@@ -312,7 +315,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
-  // ⭐ [신규 추가] 댓글 좋아요 상태를 로컬에서 업데이트하는 헬퍼 함수
+  // ⭐ 댓글 좋아요 상태를 로컬에서 업데이트하는 헬퍼 함수
   void _updateCommentLikeStatus(String commentId, int newLikesCount, bool isLiked) {
     final int index = _comments.indexWhere((c) => c.id == commentId);
     if (index != -1) {
@@ -332,6 +335,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
         likes: newLikesCount,
         liked: isLiked,
 
+        // ✅ [오류 해결] replies 필드가 이제 Comment 모델에 있으므로 안전하게 복사
         replies: oldComment.replies,
         reporteCount: oldComment.reporteCount,
         reported: oldComment.reported,
@@ -362,6 +366,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
         likes: oldComment.likes,
         // ⭐ [유지] 좋아요 필드
         liked: oldComment.liked,
+
+        // ✅ [오류 해결] replies 필드 복사
         replies: oldComment.replies,
         reporteCount: newReporteCount,
         reported: isReported,
@@ -374,7 +380,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
   }
 
 
-  // ⭐ [신규 추가] 댓글 좋아요 토글 API 호출 및 UI 처리
+  // ⭐ 댓글 좋아요 토글 API 호출 및 UI 처리
   Future<void> _toggleLikeCommentApi(Comment comment) async {
     // 1. 권한 확인 (로그인 필요)
     if (_currentUserId == null || _isUserIdLoading || _currentUserId == 'guest_unauth') {
@@ -810,6 +816,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
   }
   @override
   Widget build(BuildContext context) {
+    // 게시물 신고 누적 3회 이상 여부
+    final bool isPostBlocked = _postReportCount >= 3;
 
     if (_isUserIdLoading) {
       return const Scaffold(
@@ -859,9 +867,16 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   ),
                   const SizedBox(height: 6),
 
+                  // 📌 [수정된 부분] 게시물 제목 조건부 표시
                   Text(
-                    widget.post.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    isPostBlocked
+                        ? '⛔ 이 게시물은 신고 누적으로 인해 차단되었습니다.'
+                        : widget.post.title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: isPostBlocked ? Colors.red.shade700 : Colors.black,
+                    ),
                   ),
                   const SizedBox(height: 8),
 
@@ -896,6 +911,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   const Divider(height: 20),
 
 
+                  // 게시물 수정/삭제 버튼 (작성자일 경우) - 차단 여부와 관계없이 표시
                   if (_isAuthor)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12.0),
@@ -988,15 +1004,29 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       ),
                     ),
 
-                  Text(widget.post.content, style: const TextStyle(fontSize: 16)),
+                  // 📌 [수정된 부분] 게시물 내용 조건부 표시
+                  if (isPostBlocked)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 30.0),
+                      child: Center(
+                        child: Text(
+                          '게시물 내용이 신고 누적(${_postReportCount}회)으로 인해 차단되었습니다.',
+                          style: TextStyle(fontSize: 16, color: Colors.red.shade500, fontStyle: FontStyle.italic),
+                        ),
+                      ),
+                    )
+                  else
+                    Text(widget.post.content, style: const TextStyle(fontSize: 16)),
 
-                  _buildPerformanceCard(context),
+                  // 📌 [수정된 부분] 공연 카드 (차단되지 않았을 때만 표시)
+                  if (!isPostBlocked)
+                    _buildPerformanceCard(context),
 
                   const SizedBox(height: 16),
 
                   // ⭐ [신규 추가] 게시물 신고 버튼
-                  // 작성자가 아니며, 이미 신고하지 않은 경우에만 표시
-                  if (!_isAuthor && !_isPostReported)
+                  // 작성자가 아니며, 이미 신고하지 않았고, 차단되지 않은 경우에만 표시
+                  if (!_isAuthor && !_isPostReported && !isPostBlocked)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12.0),
                       child: Row(
@@ -1027,15 +1057,15 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       ),
                     ),
 
-                  // 이미 신고한 경우 메시지 표시
-                  if (_isPostReported)
+                  // 이미 신고했거나 차단된 경우 메시지 표시
+                  if (_isPostReported || isPostBlocked)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           Text(
-                            '이미 신고한 게시글입니다. (누적 신고: $_postReportCount)',
+                            isPostBlocked ? '이 게시물은 차단 상태입니다. (누적 신고: $_postReportCount)' : '이미 신고한 게시글입니다. (누적 신고: $_postReportCount)',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.red.shade700,

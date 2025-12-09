@@ -1,6 +1,7 @@
 import Flutter
 import UIKit
-import NaverThirdPartyLogin
+import NidThirdPartyLogin
+
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -11,8 +12,12 @@ import NaverThirdPartyLogin
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
 
-    // --- 네이버 로그인 SDK 초기화 ---
-    let naverConnection = NaverThirdPartyLoginConnection.getSharedInstance()
+    NidOAuth.shared.initialize(
+        appName: "컬쳐요",
+        clientId: "RdMhFpaVD7Wo8hOvdeAP",
+        clientSecret:"JqfrUIYa8T"
+    )
+    // --- 네이버 로그인 SDK 초기화 --
 
     // 1. Info.plist로부터 안전하게 설정 값 불러오기
     guard let naverConsumerKey = Bundle.main.object(forInfoDictionaryKey: "NAVER_CONSUMER_KEY") as? String,
@@ -40,13 +45,12 @@ import NaverThirdPartyLogin
     open url: URL,
     options: [UIApplication.OpenURLOptionsKey : Any] = [:]
   ) -> Bool {
-    // 네이버 앱 또는 웹에서 로그인이 끝나고 내 앱으로 돌아왔을 때 이 부분이 호출됨
-    let result = NaverThirdPartyLoginConnection.getSharedInstance().application(app, open: url, options: options)
-    if result {
-      // 네이버 로그인 콜백이 성공적으로 처리된 경우
-      return true
+    // 네이버 로그인 콜백이 성공적으로 처리된 경우
+    if (NidOAuth.shared.handleURL(url) == true) {
+    return true
     }
 
+    return false
     // 다른 종류의 URL 콜백이 있다면 여기서 처리
 
     return super.application(app, open: url, options: options)

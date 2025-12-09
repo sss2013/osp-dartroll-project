@@ -3,10 +3,9 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // 💡 [추가] Provider 사용을 위해 임포트
-import 'package:dio/dio.dart'; // 💡 [추가] DioException 처리를 위해 임포트
+import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
 
-// ⭐ [추가] PostService import
 import 'package:cultureyo/src/features/community/service/post_service.dart';
 import 'package:cultureyo/src/features/community/data/post_model.dart';
 
@@ -24,7 +23,6 @@ class BoardPage extends StatefulWidget {
 class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // 💡 [변경] PostService 인스턴스를 직접 생성하지 않고, Provider로 주입받을 변수로 선언
   late PostService _postService;
 
   String selectedRegion = '전체';
@@ -58,19 +56,13 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
         _fetchPosts();
       }
     });
-
-    // 🚨 [변경] _fetchPosts()를 initState에서 제거하고 didChangeDependencies()로 옮김
-    // _fetchPosts();
   }
 
-  // 💡 [추가] Service 인스턴스를 context를 통해 가져오는 메서드
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // context.read를 사용하여 Service 인스턴스를 가져옵니다.
     _postService = context.read<PostService>();
 
-    // 최초 목록 로드 실행 (initState의 역할을 대신)
     if (posts.isEmpty && !isLoading) {
       _fetchPosts();
     }
@@ -82,9 +74,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     super.dispose();
   }
 
-  // ⭐ [수정] _fetchPosts 함수: DioException 처리 구조 추가
   Future<void> _fetchPosts() async {
-    // 💡 _postService가 초기화되지 않았다면 바로 리턴 (안전 장치)
     if (!mounted || _postService == null) return;
 
     setState(() {
@@ -96,7 +86,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     log('🔍 [CALL_SERVICE] Fetching posts for category: $category', name: 'BOARD_PAGE');
 
     try {
-      // ⭐ PostService의 fetchPosts 함수 호출
       final fetchedPosts = await _postService.fetchPosts(category);
 
       setState(() {
@@ -104,7 +93,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
         isLoading = false;
       });
 
-    } on DioException catch (e) { // 💡 [추가] DioException 처리
+    } on DioException catch (e) {
       log('🚨 [DIO_ERROR] Failed to fetch posts: ${e.message}', name: 'BOARD_PAGE');
       if(mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -129,7 +118,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   // ----------------------------------------------------
 
   List<Post> _filteredPosts(String category) {
-    // ... 로직 유지 ...
     final filtered = posts.where((post) {
       final regionMatch =
           selectedRegion == '전체' || post.region == selectedRegion;
@@ -138,7 +126,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
       return post.category == category && regionMatch && genreMatch;
     }).toList();
 
-    // 최신순 정렬 (date 기준)
     filtered.sort((a, b) => b.date.compareTo(a.date));
 
     final startIndex = (currentPage - 1) * postsPerPage;
@@ -162,7 +149,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   }
 
   Future<void> _selectRegion() async {
-    // ... 로직 유지 ...
     final region = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
@@ -185,7 +171,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   }
 
   Future<void> _selectGenre() async {
-    // ... 로직 유지 ...
     final genre = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
@@ -231,7 +216,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    // ... build 로직 유지 ...
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -357,7 +341,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   }
 
   Widget _buildPostList(String category) {
-    // ... _buildPostList 로직 유지 ...
     final posts = _filteredPosts(category);
     final totalPages = (_getFilteredCount(category) / postsPerPage).ceil();
 
@@ -376,28 +359,31 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
 
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                totalPages,
-                    (i) {
-                  final page = i + 1;
-                  return TextButton(
-                    onPressed: () {
-                      setState(() {
-                        currentPage = page;
-                      });
-                    },
-                    child: Text(
-                      '$page',
-                      style: TextStyle(
-                        fontWeight:
-                        page == currentPage ? FontWeight.bold : FontWeight.normal,
-                        color: page == currentPage ? Colors.blue : Colors.black,
+            child: SingleChildScrollView( // 👈 수정된 부분: SingleChildScrollView 추가
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  totalPages,
+                      (i) {
+                    final page = i + 1;
+                    return TextButton(
+                      onPressed: () {
+                        setState(() {
+                          currentPage = page;
+                        });
+                      },
+                      child: Text(
+                        '$page',
+                        style: TextStyle(
+                          fontWeight:
+                          page == currentPage ? FontWeight.bold : FontWeight.normal,
+                          color: page == currentPage ? Colors.blue : Colors.black,
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           );
@@ -407,7 +393,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
         return GestureDetector(
           onTap: () async {
             try {
-              // 1. ⭐ [수정] PostService의 increaseViewCount 함수 호출 (Dio/Provider 사용)
+              // 1. PostService의 increaseViewCount 함수 호출
               await _postService.increaseViewCount(post.id, post.category);
 
               // 2. 상세 페이지로 이동하며 복귀를 기다림 (await)
@@ -416,7 +402,8 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
                 MaterialPageRoute(builder: (_) => PostDetailPage(post: post)),
               );
 
-              // 3. 상세 페이지에서 돌아왔을 때 목록을 새로고침하여 조회수 갱신
+              // 3. ⭐ [수정된 핵심 로직] 상세 페이지에서 돌아왔을 때 목록을 새로고침하여
+              //    변경된 조회수, 좋아요, 댓글 상태를 반영합니다.
               _fetchPosts();
 
             } on DioException catch (e) {

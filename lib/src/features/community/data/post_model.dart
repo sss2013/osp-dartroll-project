@@ -15,7 +15,7 @@ class Post {
 
   // ⭐ [신고 기능 추가]
   final bool reported;
-  final int reporteCount;
+  final int reportedCount;
 
   // 공연 정보 확장 필드
   final String? performanceId;
@@ -36,7 +36,7 @@ class Post {
     required this.date,
     // ⭐ [신고 필드 필수]
     required this.reported,
-    required this.reporteCount,
+    required this.reportedCount,
     this.performanceId,
     this.performanceTitle,
     this.performanceUrl,
@@ -65,7 +65,7 @@ class Post {
 
     // ⭐ [신규 로직] 신고 관련 필드 파싱
     final bool isReported = json['reported'] as bool? ?? false;
-    final int calculatedReporteCount = json['reporteCount'] as int? ?? 0;
+    final int calculatedReportedCount = json['reportedCount'] as int? ?? 0;
 
     return Post(
       id: postId,
@@ -87,7 +87,7 @@ class Post {
 
       // ⭐ [파싱 반영] 신고 필드 반영
       reported: isReported,
-      reporteCount: calculatedReporteCount,
+      reportedCount: calculatedReportedCount,
 
       performanceId: json['performanceId'] as String?,
       performanceTitle: json['performanceTitle'] as String?,
@@ -98,17 +98,17 @@ class Post {
 /// 게시글 신고 API 응답 모델
 class PostReportStatus {
   final bool reported;
-  final int reporteCount;
+  final int reportedCount;
 
   PostReportStatus({
     required this.reported,
-    required this.reporteCount,
+    required this.reportedCount,
   });
 
   factory PostReportStatus.fromJson(Map<String, dynamic> json) {
     return PostReportStatus(
       reported: json['reported'] as bool? ?? false,
-      reporteCount: json['reporteCount'] as int? ?? 0,
+      reportedCount: json['reportedCount'] as int? ?? 0,
     );
   }
 }

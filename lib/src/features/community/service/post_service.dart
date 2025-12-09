@@ -190,6 +190,9 @@ class PostService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final Map<String, dynamic> responseData = response.data;
 
+        // ⭐ [신규 추가] 서버에서 받은 전체 응답 데이터를 로그에 출력
+        log('➡️ [SERVER_RESPONSE_DATA] Raw Data: ${responseData}', name: 'API_SERVICE_POST_LIKE');
+
         // ⭐ [핵심 로직] like 배열의 길이만 계산
         final List<dynamic> likeListDynamic = responseData['like'] is List
             ? responseData['like'] as List<dynamic>
@@ -197,7 +200,6 @@ class PostService {
 
         final int likesCount = likeListDynamic.length;
 
-        log('✅ [POST_LIKE_SUCCESS] Count: $likesCount', name: 'API_SERVICE_POST_LIKE');
         return likesCount;
 
       } else {
@@ -229,26 +231,20 @@ class PostService {
         data: requestBody,
       );
 
-      log('Status Code: ${response.statusCode}', name: 'API_SERVICE_POST_REPORT');
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         final Map<String, dynamic> responseData = response.data;
 
+        log('➡️ [SERVER_RESPONSE_DATA] Raw Data: ${responseData}', name: 'API_SERVICE_POST_REPORT');
         final PostReportStatus reportStatus = PostReportStatus.fromJson(responseData);
-
-        log('✅ [POST_REPORT_SUCCESS] Reported: ${reportStatus.reported}, Count: ${reportStatus.reporteCount}', name: 'API_SERVICE_POST_REPORT');
 
         return reportStatus;
 
       } else {
-        log('🚨 [POST_REPORT_FAIL_RESPONSE] Body: ${response.data}', name: 'API_SERVICE_POST_REPORT');
         throw Exception('게시글 신고 처리 실패 (상태 코드: ${response.statusCode})');
       }
     } on DioException catch (e) {
-      log('🚨 [DIO_EXCEPTION] Report failed: ${e.message}', name: 'API_SERVICE_POST_REPORT');
       throw Exception('게시글 신고 실패: ${e.response?.data['message']?.toString() ?? e.message}');
     } catch (e) {
-      log('🚨 [REPORT_ERROR] Exception: $e', name: 'API_SERVICE_POST_REPORT');
       rethrow;
     }
   }

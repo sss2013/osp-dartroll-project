@@ -2,7 +2,7 @@ import 'package:cultureyo/src/core/network/dio_client.dart';
 import 'package:cultureyo/src/features/authentication/domain/usecases/auth_manager.dart';
 import 'package:cultureyo/src/features/authentication/presentation/pages/login_page.dart';
 import 'package:cultureyo/src/features/authentication/presentation/pages/splash_page.dart';
-import 'package:cultureyo/src/features/community/service/chat_service.dart';
+import 'package:cultureyo/src/features/chat/service/chat_service.dart';
 import 'package:cultureyo/src/features/event/service/event_service.dart';
 import 'package:cultureyo/src/features/profile/domain/user_service.dart';
 import 'package:flutter/material.dart';

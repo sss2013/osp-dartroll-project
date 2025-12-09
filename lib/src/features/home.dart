@@ -6,7 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:cultureyo/src/features/community/presentation/pages/board_page.dart';
-import 'package:cultureyo/src/features/community/presentation/pages/chat_page.dart';
+import 'package:cultureyo/src/features/chat/presentation/chat_page.dart';
 import 'event/data/event.dart';
 import 'package:provider/provider.dart';
 import 'my_info_page.dart';
@@ -22,7 +22,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _pages = [
     HomePage(),
     BoardPage(),
-    ChatPage(),
+    // ChatPage(),
     MyInfoPage(),
   ];
 
@@ -416,7 +416,7 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
 
   Widget _dropdownContainer({required String label, required String? value, required List<String> items, required Function(String?) onChanged}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
@@ -426,10 +426,23 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
         child: DropdownButton<String>(
           isExpanded: true,
           value: value,
-          hint: Text(label, style: TextStyle(color: Colors.grey[500])),
+          hint: Text(
+            label,
+            style: TextStyle(color: Colors.grey[500], fontSize: 13),
+            overflow: TextOverflow.ellipsis,
+          ),
           icon: Icon(Icons.arrow_drop_down, color: _primaryBlue),
-          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(color: Colors.black87)))).toList(),
-          onChanged: onChanged,
+          items: items.map((e) => DropdownMenuItem(
+            value: e,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                  e,
+                  style: const TextStyle(color: Colors.black87, fontSize: 14)
+              ),
+            ),
+          )).toList(),          onChanged: onChanged,
           dropdownColor: Colors.white,
           borderRadius: BorderRadius.circular(20),
         ),

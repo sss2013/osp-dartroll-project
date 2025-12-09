@@ -22,7 +22,7 @@ class PostDetailPage extends StatefulWidget {
 
 class _PostDetailPageState extends State<PostDetailPage> {
   late int likes;
-  // ⭐ [유지] 게시물 신고 상태는 로컬에서 관리 (서버 응답으로 업데이트)
+  // 게시물 신고 상태는 로컬에서 관리 (서버 응답으로 업데이트)
   bool _isPostReported = false;
   late int _postReportedCount;
 
@@ -158,10 +158,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
     _cancelReplying();
 
     try {
-      // 서버에서 댓글 목록을 가져옵니다. (이 응답에는 'liked'와 'reported'가 포함되지 않는다고 가정)
+      // 서버에서 댓글 목록을 가져옵니다.
       final fetchedComments = await _commentService.fetchComments(widget.post.id);
-
-      // ⚠️ 클라이언트 측에서 좋아요/신고 여부를 판별하는 로직은 제거합니다.
 
       if (mounted) {
         setState(() {
@@ -292,7 +290,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
             message += ' (게시물 차단이 적용되었습니다.)';
           }
         } else {
-          message = '이미 신고한 게시글입니다. 중복 신고는 처리되지 않았습니다.';
+          message = '이미 신고한 게시글입니다.';
         }
 
         _showSnackbar('$message (누적 신고: ${_postReportedCount}회)', duration: const Duration(seconds: 2));
@@ -348,7 +346,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
   }
 
 
-  // ⭐ 댓글 좋아요 토글 API 호출 및 UI 처리
+  // 댓글 좋아요 토글 API 호출 및 UI 처리
   Future<void> _toggleLikeCommentApi(Comment comment) async {
     // 1. 권한 확인 (로그인 필요)
     if (_currentUserId == null || _isUserIdLoading || _currentUserId == 'guest_unauth') {
@@ -388,24 +386,12 @@ class _PostDetailPageState extends State<PostDetailPage> {
   }
 
 
-  // ⭐ 댓글 신고 API 호출 및 UI 처리 (클라이언트 선차단 로직 제거)
+  // 댓글 신고 API 호출 및 UI 처리
   Future<void> _toggleReportApi(Comment comment) async {
     if (_currentUserId == null || _isUserIdLoading || _currentUserId == 'guest_unauth') {
       _showSnackbar('로그인된 사용자만 신고할 수 있습니다.', duration: const Duration(seconds: 2));
       return;
     }
-
-    // ⭐ [수정] 클라이언트 측의 중복 신고 및 차단 체크 로직 제거
-    /*
-    if (comment.reported) {
-      _showSnackbar('이미 신고한 댓글입니다.');
-      return;
-    }
-    if (comment.reportedCount >= 3) {
-      _showSnackbar('이미 차단된 댓글입니다. 추가 신고할 수 없습니다.');
-      return;
-    }
-    */
 
     try {
       final result = await _commentService.toggleCommentReport(comment.id);
@@ -423,7 +409,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
           }
         } else {
           // 서버 응답: 신고 실패 (이미 신고했거나 다른 이유)
-          message = '이미 신고한 댓글입니다. 중복 신고는 처리되지 않았습니다.';
+          message = '이미 신고한 댓글입니다. ';
         }
         _showSnackbar(message, duration: const Duration(seconds: 2));
       }
@@ -540,6 +526,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
         ? widget.post.performanceTitle!
         : '이 공연에 대해 더 알고싶다면?';
 
+    // 이전에 저장된 정보를 활용하여 PerformanceDetail이 필요함을 인지합니다.
+    // 현재는 URL만 사용하지만, 상세 정보(thumbnail, date, region, genre)를 표시할 수 있습니다.
+    // [2025-11-18] 저장된 정보: ID 포맷 'genre:number', '/api/getEventDetail' API 호출 계획
+
     return Padding(
       padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
       child: Card(
@@ -552,6 +542,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
               final uri = Uri.parse(url);
               try {
                 if (await canLaunchUrl(uri)) {
+                  // Tapping this card should open a new browser window with a link to the performance's information.
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
                 } else {
                   if (mounted) {
@@ -597,24 +588,22 @@ class _PostDetailPageState extends State<PostDetailPage> {
     );
   }
 
-  // 게시글 작성자 프로필 팝업을 띄우는 메서드
-  void _showAuthorProfileDialog(BuildContext context) {
-    final authorNickname = widget.post.author; // 게시글 작성자의 닉네임
-
+  // 🌟 [통합 및 수정된 함수] 게시글/댓글 작성자 프로필 팝업을 띄우는 메서드
+  void _showUserProfileDialog(BuildContext context, String authorNickname) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), // 모서리 둥글기 증가
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           backgroundColor: Colors.white,
-          contentPadding: EdgeInsets.zero, // 내부 패딩 제거
+          contentPadding: EdgeInsets.zero,
           content: Container(
-            width: MediaQuery.of(context).size.width * 0.8, // 너비 설정
+            width: MediaQuery.of(context).size.width * 0.8,
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 제목
+                // 제목: 인수로 받은 닉네임 사용
                 Text(
                   '$authorNickname님의 프로필',
                   textAlign: TextAlign.center,
@@ -622,7 +611,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                 ),
                 const SizedBox(height: 20),
 
-                // 프로필 아이콘 (MyInfoPage 스타일 반영)
+                // 프로필 아이콘
                 Stack(
                   children: [
                     Container(
@@ -633,9 +622,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       ),
                       child: const CircleAvatar(
                         radius: 45,
-                        // 이미지 대신 아이콘 사용
                         child: Icon(Icons.person, size: 45, color: Colors.white),
-                        //backgroundColor: Colors.lightBlue, // 배경색 추가
                       ),
                     ),
                   ],
@@ -644,20 +631,20 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
                 // 닉네임
                 Text(
-                  authorNickname,
+                  authorNickname, // 인수로 받은 닉네임 사용
                   style: const TextStyle(
-                    fontSize: 24, // 크기 증가
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 20),
 
-                // 1:1 채팅하기 버튼 (MyInfoPage 스타일 참고)
+                // 1:1 채팅하기 버튼
                 ElevatedButton.icon(
                   onPressed: () {
                     // TODO: 1:1 채팅하기 기능 구현
-                    _showSnackbar('1:1 채팅 기능은 아직 구현되지 않았습니다.');
+                    _showSnackbar('$authorNickname님에게 1:1 채팅을 신청했습니다. (기능 미구현)');
                     Navigator.of(context).pop();
                   },
                   icon: const Icon(Icons.chat_bubble_outline, size: 20),
@@ -674,20 +661,20 @@ class _PostDetailPageState extends State<PostDetailPage> {
                 ),
                 const SizedBox(height: 12),
 
-                // 닫기 버튼 (ElevatedButton 형식으로 변경 및 스타일 수정)
+                // 닫기 버튼
                 ElevatedButton(
                   onPressed: () {
                     Navigator.of(context).pop();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[200], // 배경색 투명
-                    foregroundColor: Colors.white, // 텍스트 색상
+                    backgroundColor: Colors.blue[200],
+                    foregroundColor: Colors.white,
                     minimumSize: const Size(double.infinity, 50),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: Colors.grey.shade300, width: 1), // 테두리 추가
+                      side: BorderSide(color: Colors.grey.shade300, width: 1),
                     ),
-                    elevation: 2, // 그림자 제거
+                    elevation: 2,
                     shadowColor: Colors.transparent,
                   ),
                   child: const Text(
@@ -758,12 +745,38 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       child: Icon(Icons.person, size: 18),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        comment.authorNickname,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+
+                    // 🌟 [수정] 닉네임과 프로필 아이콘을 묶고 탭 제스처 추가
+                    GestureDetector(
+                      onTap: () {
+                        // 삭제/차단되지 않은 댓글이 아니며 본인 댓글도 아닐 때만 프로필 다이얼로그 표시
+                        if (!isDeleted && !isBlockedByReport && !isMyComment) {
+                          // 🌟 [수정] 통합 함수 호출 시 댓글 작성자 닉네임 전달
+                          _showUserProfileDialog(context, comment.authorNickname);
+                        } else if (isMyComment) {
+                          _showSnackbar('본인의 프로필은 마이페이지에서 확인해 주세요.', duration: const Duration(seconds: 1));
+                        }
+                      },
+                      child: Row(
+                        children: [
+                          Text(
+                            comment.authorNickname,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(width: 6),
+                          // ⭐ [추가] 댓글 작성자 프로필 아이콘 (삭제/차단되지 않았을 때만 표시)
+                          if (!isDeleted && !isBlockedByReport)
+                            Icon(
+                              Icons.account_circle,
+                              color: Colors.blue[700],
+                              size: 20,
+                            ),
+                        ],
                       ),
                     ),
+
+                    const Spacer(), // 남은 공간을 채워 날짜를 오른쪽으로 밀어냅니다.
+
                     Text(
                       _formatDate(comment.createdAt),
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -772,7 +785,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                 ),
                 const SizedBox(height: 8),
 
-                // ⭐ [수정된 부분]: 댓글 본문 내용 영역을 회색 배경으로 구분
+                // 댓글 본문 내용 영역을 회색 배경으로 구분
                 Padding(
                   padding: const EdgeInsets.only(left: 44),
                   child: Container(
@@ -800,7 +813,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   padding: const EdgeInsets.only(left: 44),
                   child: Row(
                     children: [
-                      // ⭐ [수정]: 답글 작성 버튼 (blue[200] 배경, 흰색 텍스트)
+                      // 답글 작성 버튼
                       if (!isDeleted && !isBlockedByReport && comment.parentId == null)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -833,22 +846,22 @@ class _PostDetailPageState extends State<PostDetailPage> {
                           ),
                         ),
 
-                      // ⭐ [수정된 부분]: 좋아요 버튼 디자인
+                      // 좋아요 버튼 디자인
                       if (showLikeButton)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.blue[200], // ✅ blue[200] 배경색 적용
+                            color: Colors.blue[200], // blue[200] 배경색 적용
                             borderRadius: BorderRadius.circular(8), // 둥근 모서리
                           ),
                           child: TextButton.icon(
                             onPressed: () => _toggleLikeCommentApi(comment),
-                            icon: const Icon(likeIcon, size: 14, color: Colors.white), // ✅ 아이콘 색상 흰색
+                            icon: const Icon(likeIcon, size: 14, color: Colors.white), // 아이콘 색상 흰색
                             label: Text(
                                 '${comment.likes}',
                                 style: const TextStyle(
                                     fontSize: 12,
-                                    color: Colors.white, // ✅ 텍스트 색상 흰색
+                                    color: Colors.white, // 텍스트 색상 흰색
                                     fontWeight: FontWeight.normal)),
                             style: TextButton.styleFrom(
                               padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
@@ -964,15 +977,13 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   ),
                   const SizedBox(height: 6),
 
-                  // 게시물 제목 조건부 표시
+                  // 게시물 제목
                   Text(
-                    isPostBlocked
-                        ? '⛔ 이 게시물은 신고 누적으로 인해 차단되었습니다.'
-                        : widget.post.title,
-                    style: TextStyle(
+                    widget.post.title,
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
-                      color: isPostBlocked ? Colors.red.shade700 : Colors.black,
+                      color: Colors.black,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -989,9 +1000,11 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                   fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black),
                             ),
                             const SizedBox(width: 6),
-                            // ⭐ 프로필 아이콘 추가 (클릭 시 팝업 실행)
+                            // 🌟 [수정] 프로필 아이콘 추가 (클릭 시 통합 함수 호출)
                             GestureDetector(
-                              onTap: () => _showAuthorProfileDialog(context),
+                              onTap: () {
+                                _showUserProfileDialog(context, widget.post.author);
+                              },
                               child: Icon(
                                 Icons.account_circle,
                                 color: Colors.blue[700],
@@ -1027,7 +1040,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   const Divider(height: 20),
 
 
-                  // 게시물 수정/삭제 버튼 (작성자일 경우) - 차단 여부와 관계없이 표시
+                  // 게시물 수정/삭제 버튼 (작성자일 경우)
                   if (_isAuthor)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12.0),
@@ -1126,8 +1139,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       padding: const EdgeInsets.symmetric(vertical: 30.0),
                       child: Center(
                         child: Text(
-                          '게시물 내용이 신고 누적(${_postReportedCount}회)으로 인해 차단되었습니다.',
-                          style: TextStyle(fontSize: 16, color: Colors.red.shade500, fontStyle: FontStyle.italic),
+                          '관리자에 의해 차단된 글입니다.',
+                          style: TextStyle(fontSize: 16, color: Colors.red.shade500, fontWeight: FontWeight.bold),
                         ),
                       ),
                     )
@@ -1135,8 +1148,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     Text(widget.post.content, style: const TextStyle(fontSize: 16)),
 
                   // 공연 카드 (차단되지 않았을 때만 표시)
-                  if (!isPostBlocked)
-                    _buildPerformanceCard(context),
+                  _buildPerformanceCard(context),
 
                   const SizedBox(height: 16),
 
@@ -1181,7 +1193,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         children: [
                           Text(
                             isPostBlocked
-                                ? '이 게시물은 차단 상태입니다. (누적 신고: $_postReportedCount)'
+                                ? '이 게시물은 차단 상태입니다. '
                                 : (_isPostReported ? '이미 신고한 게시글입니다. (누적 신고: $_postReportedCount)' : ''),
                             style: TextStyle(
                               fontSize: 12,
@@ -1290,7 +1302,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            color: Colors.blue[200], // ⭐ [이전 수정] 댓글 입력창 배경색을 흰색으로 변경
+            color: Colors.blue[200],
             child: Row(
               children: [
                 Expanded(

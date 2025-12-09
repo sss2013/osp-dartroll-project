@@ -47,7 +47,7 @@ class PerformanceService {
     final Map<String, dynamic> body = {
       'idxName': idxName,
       // '지역 미정' 처리 로직 유지
-      'area': area == '지역 미정' ? 'empty' : area,
+      'area': area == '온라인' ? 'empty' : area,
       'genre': genre,
     };
 

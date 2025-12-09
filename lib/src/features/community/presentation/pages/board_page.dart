@@ -31,7 +31,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   final int postsPerPage = 5;
 
   final List<String> regions = [
-    '전체', '강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '지역 미정'
+    '전체', '강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '온라인'
   ];
 
   final List<String> genres = [
@@ -86,6 +86,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     log('🔍 [CALL_SERVICE] Fetching posts for category: $category', name: 'BOARD_PAGE');
 
     try {
+      // ⭐ 변경 예정: 서버 페이징 및 필터링 적용 시, _postService.fetchPosts(category, currentPage, selectedRegion, selectedGenre) 형태로 변경해야 합니다.
       final fetchedPosts = await _postService.fetchPosts(category);
 
       setState(() {
@@ -219,7 +220,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.lightBlue,
+        backgroundColor: Colors.blue[200],
         title: const Text(
           '게시판',
           style: TextStyle(
@@ -312,7 +313,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
           ),
           Expanded(
             child: Container(
-              color: Colors.grey[200],
+              color: Colors.blue[50],
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : TabBarView(
@@ -359,30 +360,50 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
 
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            child: SingleChildScrollView( // 👈 수정된 부분: SingleChildScrollView 추가
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  totalPages,
-                      (i) {
-                    final page = i + 1;
-                    return TextButton(
-                      onPressed: () {
-                        setState(() {
-                          currentPage = page;
-                        });
-                      },
-                      child: Text(
-                        '$page',
-                        style: TextStyle(
-                          fontWeight:
-                          page == currentPage ? FontWeight.bold : FontWeight.normal,
-                          color: page == currentPage ? Colors.blue : Colors.black,
+            child: Center( // 👈 중앙 정렬을 위해 Center 위젯 추가
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center, // Row 내부 중앙 정렬 (이 부분은 SingleChildScrollView 때문에 완벽히 작동하지 않으므로, 외부 Center가 중요합니다.)
+                  children: List.generate(
+                    totalPages,
+                        (i) {
+                      final page = i + 1;
+                      final isSelected = page == currentPage;
+
+                      return Container( // 디자인 적용을 위해 Container 사용
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        decoration: BoxDecoration(
+                          color: isSelected ? Colors.blue : Colors.white, // 선택된 페이지는 파란색, 나머지는 흰색
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSelected ? Colors.blue : Colors.white,
+                            width: 1,
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                        child: InkWell( // TextButton 대신 InkWell을 사용하여 영역 전체를 터치 가능하게 합니다.
+                          onTap: () {
+                            setState(() {
+                              currentPage = page;
+                            });
+                            // ⭐ 페이징을 서버로 전환하면 여기에 _fetchPosts()를 호출해야 합니다.
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            child: Text(
+                              '$page',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold, // 굵은 글자
+                                color: isSelected ? Colors.white : Colors.black, // 선택된 페이지는 흰색 글씨, 나머지는 검은색
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
             ),

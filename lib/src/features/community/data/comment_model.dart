@@ -19,11 +19,10 @@ class Comment {
   // ⭐ [수정/보강] 좋아요 관련 필드
   final int likes; // 총 좋아요 개수 (likeUserIds.length로 계산)
   final bool liked; // 현재 유저의 좋아요 여부 (PostDetailPage에서 계산하여 덮어쓸 값)
-  final List<String> likeUserIds; // ⭐ [신규] 좋아요를 누른 유저 ID 목록 (서버의 like[] 필드)
 
   // ⭐ [신규 추가] 신고 관련 필드
-  final int reportedCount; // 서버에서 받은 신고 누적 횟수 (필드명 repoteCount 반영)
-  final bool reported; // 현재 유저가 이 댓글을 신고했는지 여부 (필드명 reported 반영)
+  final int reportedCount;
+  final bool reported;
 
   // ✅ 답글 리스트 필드
   final List<Comment>? replies;
@@ -42,7 +41,6 @@ class Comment {
     // ⭐ [수정] 기본값 명시: fromJson에서 계산값을 넘겨주므로 기본값은 유지합니다.
     this.likes = 0,
     this.liked = false,
-    this.likeUserIds = const [], // ⭐ [신규] 기본값 추가
 
     // ⭐ [신규 추가] 생성자에도 반영
     this.reportedCount = 0,
@@ -66,7 +64,6 @@ class Comment {
     // ⭐ [추가] toJson에도 반영
     'likes': likes,
     'liked': liked,
-    'likeUserIds': likeUserIds, // ⭐ [신규] likeUserIds도 반영
 
     // ⭐ [신규 추가] toJson에도 반영
     'reportedCount': reportedCount,
@@ -79,22 +76,9 @@ class Comment {
 
   factory Comment.fromJson(Map<String, dynamic> json) {
     final String userId = json['userId'] is String ? json['userId'] as String : 'unknown_user';
+    final int parsedLikes = json['likeCount'] as int? ?? 0;
     final int parsedReportedCount = json['reportedCount'] as int? ?? 0;
     final bool parsedReported = json['reported'] as bool? ?? false;
-
-    // 1. like[] 배열 파싱 및 String 리스트로 변환 (서버에서 받은 유저 ID 목록)
-    final List<dynamic>? rawLikeList = json['like'] as List<dynamic>?;
-    final List<String> likeIds = rawLikeList
-        ?.map((id) => id.toString())
-        .toList() ?? [];
-
-    // 2. 좋아요 개수(likes) 계산
-    final int calculatedLikes = likeIds.length;
-
-    // ❌ 서버에서 명시적으로 제공하지 않는 필드 파싱 로직 제거
-    // final int parsedLikes = json['likes'] as int? ?? 0;
-    // final bool parsedLiked = json['liked'] as bool? ?? false;
-
 
     return Comment(
       id: json['_id'] as String,
@@ -110,9 +94,8 @@ class Comment {
       authorNickname: userId.length >= 4 ? '유저_${userId.substring(0, 4)}' : '시스템 유저',
 
       // ⭐ [수정] 계산된 값 적용
-      likes: calculatedLikes,
+      likes: parsedLikes,
       liked: false, // PostDetailPage에서 현재 유저 ID를 이용해 덮어쓸 값입니다. 임시로 false 설정.
-      likeUserIds: likeIds, // ⭐ [신규] 파싱된 유저 ID 목록 저장
 
       // ⭐ [신규 추가] 파싱된 값 적용
       reportedCount: parsedReportedCount,
@@ -136,7 +119,6 @@ class Comment {
     String? authorNickname,
     int? likes,
     bool? liked,
-    List<String>? likeUserIds, // ⭐ 추가
     int? reportedCount,
     bool? reported,
     List<Comment>? replies,
@@ -155,7 +137,6 @@ class Comment {
       // ⭐ 좋아요 관련 필드
       likes: likes ?? this.likes,
       liked: liked ?? this.liked,
-      likeUserIds: likeUserIds ?? this.likeUserIds, // ⭐ likeUserIds도 복사
 
       reportedCount: reportedCount ?? this.reportedCount,
       reported: reported ?? this.reported,

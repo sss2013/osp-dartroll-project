@@ -14,8 +14,8 @@ class Post {
   final DateTime date;
 
   // ⭐ [신고 기능 추가]
-  final bool reported;
-  final int reportedCount;
+  //final bool reported;
+  final int? reportedCount;
 
   // 공연 정보 확장 필드
   final String? performanceId;
@@ -35,8 +35,8 @@ class Post {
     required this.likes,
     required this.date,
     // ⭐ [신고 필드 필수]
-    required this.reported,
-    required this.reportedCount,
+    //required this.reported,
+    this.reportedCount,
     this.performanceId,
     this.performanceTitle,
     this.performanceUrl,
@@ -59,13 +59,8 @@ class Post {
     final String finalCategory = category ?? json['tap'] as String? ?? 'review';
     final String extractedAuthorId = json['userId'] as String? ?? 'unknown_user';
 
-    // ⭐ [핵심 로직] 좋아요 배열 처리 및 개수만 계산
-    final List<dynamic> likeListDynamic = json['like'] is List ? json['like'] as List<dynamic> : [];
-    final int calculatedLikes = likeListDynamic.length;
-
-    // ⭐ [신규 로직] 신고 관련 필드 파싱
-    final bool isReported = json['reported'] as bool? ?? false;
-    final int calculatedReportedCount = json['reportedCount'] as int? ?? 0;
+    final int actualLikes = json['likeCount'] as int? ?? 0;
+    final int? actualReportedCount = json['reportedCount'] as int?;
 
     return Post(
       id: postId,
@@ -73,21 +68,19 @@ class Post {
 
       title: json['title'] as String? ?? '제목 없음',
       content: json['content'] as String? ?? '',
-      region: json['area'] as String? ?? '지역 미정',
+      region: json['area'] as String? ?? '온라인',
       genre: json['genre'] as String? ?? '장르 미정',
       performanceUrl: json['url'] as String?,
       date: postDate,
 
       authorId: extractedAuthorId,
 
-      author: json['author'] as String? ?? '익명',
+      author: json['authorNickname'] as String? ?? '익명',
       views: json['views'] as int? ?? 0,
 
-      likes: calculatedLikes,
+      likes: actualLikes,
 
-      // ⭐ [파싱 반영] 신고 필드 반영
-      reported: isReported,
-      reportedCount: calculatedReportedCount,
+      reportedCount: actualReportedCount,
 
       performanceId: json['performanceId'] as String?,
       performanceTitle: json['performanceTitle'] as String?,

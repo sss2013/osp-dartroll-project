@@ -53,20 +53,35 @@ class UserService {
     }
   }
 
-  Future<String> loadUserData(int option) async {
+  Future<Map<String,dynamic>> loadUserName() async {
     final dio = dioClient.dio;
     try {
-      final response = await dio.get('/api/user/loadUserName?option=$option');
+      final response = await dio.get('/api/user/loadUserData', queryParameters: {'fields': 'name'});
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Failed to load user name: ${response.statusCode}');
       }
 
       final data = response.data;
-      if (option==1){
-        return data['name'] as String;
-      }  else {
-        return data;
+      return data;
+
+    } on DioException catch (e) {
+      throw Exception('Failed to load user name: ${e.message}');
+    } catch (e) {
+      throw Exception('An unexpected error occurred: $e');
+    }
+  }
+
+  Future<Map<String,dynamic>> loadUserAll() async {
+    final dio = dioClient.dio;
+    try {
+      final response = await dio.get('/api/user/loadUserData',queryParameters: {'fields':'*'});
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Failed to load user name: ${response.statusCode}');
       }
+
+      final data = response.data;
+      return data;
+
     } on DioException catch (e) {
       throw Exception('Failed to load user name: ${e.message}');
     } catch (e) {

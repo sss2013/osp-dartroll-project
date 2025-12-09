@@ -1,4 +1,6 @@
+import 'package:cultureyo/src/features/community/service/chat_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 class UserProfile {
   final String id;
   final String name;
@@ -32,8 +34,6 @@ class ChatRoom {
   });
 }
 
-
-
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
 
@@ -52,37 +52,8 @@ class _ChatPageState extends State<ChatPage> {
     return '$year년$month월$day일 $hour:$minute';
   }
   List<ChatRoom> chatRooms = [//Message 부분이 많이 필요없음 마지막 1개만 있으면 됨
-    ChatRoom(
-      id: 'room1',
-      title: 'K-푸드 페스티벌 넉넉',
-      participants: ['나', '이훈이', '맹구'],
-      messages: [
-        Message(sender: '맹구', text: '다들 시간 맞춰 도착하실 거죠? >.<',time: DateTime.now()),
-        Message(sender: '이훈이', text: '어디에서 모이기로 했죠?',time: DateTime.now()),
-        Message(sender: '나', text: '광화문역입니당',time: DateTime.now()),
-      ],
-    ),
-    ChatRoom(
-      id: 'room2',
-      title: '한강역사탐방',
-      participants: ['나', '김철수', '신짱구'],
-      messages: [
-        Message(sender: '김철수', text: '다들 어디에요?',time: DateTime.now()),
-        Message(sender: '신짱구', text: '저 지금 버스안입니다.',time: DateTime.now()),
-        Message(sender: '나', text: '아.. 죄송해요 지금 출발합니다',time: DateTime.now()),
-      ],
-    ),
-    ChatRoom(
-      id: 'room3',
-      title: '서울무용제',
-      participants: ['나', '봉미선'],
-      messages: [
-        Message(sender: '봉미선', text: '저 혜화역 앞에 노란 모자쓴 5살 아이랑 같이 있어요',time: DateTime.now()),
-        Message(sender: '나', text: '저기 보이네요',time: DateTime.now()),
-        Message(sender: '봉미선', text: '오늘 아이들이 너무 잘 놀아서 저도 즐거웠어요.',time: DateTime.now()),
-        Message(sender: '봉미선', text: '다음에 또 뵐 수 있으면 좋겠네요 :)',time: DateTime.now()),
-      ],
-    ),
+
+
   ];
 
   @override
@@ -154,15 +125,27 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     String minute = date.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
+  late final ChatService _chatService;
+
   @override
   void initState() {// 초기화
     super.initState();
     currentRoom = widget.chatRoom;
+    _chatService = context.read<ChatService>();
   }
 
-  void _sendMessage() {
+  void _sendMessage() async {
     final text = _controller.text.trim();//공백제거
     if (text.isEmpty) return;
+
+    try {
+      await _chatService.sendMessage(currentRoom.id, text);
+    } catch(e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('메시지 전송에 실패했습니다: $e')),
+      );
+      return;
+    }
 
     setState(() {
       currentRoom.messages.add(Message(sender: '나', text: text,time: DateTime.now()));//메세지를 추가 지금은 그냥 리스트에 추가

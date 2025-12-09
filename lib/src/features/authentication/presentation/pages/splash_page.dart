@@ -1,5 +1,4 @@
 import 'package:cultureyo/src/features/authentication/domain/usecases/auth_manager.dart';
-import 'package:cultureyo/src/features/profile/domain/user_service.dart';
 import 'package:cultureyo/src/features/profile/usecases/name_input_page.dart';
 import 'package:cultureyo/src/features/home.dart';
 import 'package:flutter/foundation.dart';
@@ -40,11 +39,6 @@ class _SplashPageState extends State<SplashPage> {
       if (!mounted) return;
       if(kDebugMode) { print ('Input Complete: $inputComplete'); }
       if (inputComplete) {
-        if(kDebugMode){
-          final userService = context.read<UserService>();
-          final name = await userService.loadUserId();
-          print('User Name: $name');
-        }
         Navigator.pushReplacement(
             context, MaterialPageRoute(builder: (_) => MainScreen()));
       } else {

@@ -345,7 +345,7 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
 
   Widget _dropdownContainer({required String label, required String? value, required List<String> items, required Function(String?) onChanged}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
@@ -355,9 +355,23 @@ class _RegionSelectPageState extends State<RegionSelectPage> {
         child: DropdownButton<String>(
           isExpanded: true,
           value: value,
-          hint: Text(label, style: TextStyle(color: Colors.grey[500])),
+          hint: Text(
+            label,
+            style: TextStyle(color: Colors.grey[500], fontSize: 13),
+            overflow: TextOverflow.ellipsis,
+          ),
           icon: Icon(Icons.arrow_drop_down, color: _primaryBlue),
-          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(color: Colors.black87)))).toList(),
+          items: items.map((e) => DropdownMenuItem(
+            value: e,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                  e,
+                  style: const TextStyle(color: Colors.black87, fontSize: 14)
+              ),
+            ),
+          )).toList(),
           onChanged: onChanged,
           dropdownColor: Colors.white,
           borderRadius: BorderRadius.circular(20),

@@ -1,10 +1,17 @@
+import 'dart:convert';
+
 import 'package:cultureyo/src/features/authentication/domain/usecases/auth_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_naver_login/flutter_naver_login.dart';
 import 'package:flutter_naver_login/interface/types/naver_login_result.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_naver_login/interface/types/naver_login_status.dart';
 import 'package:cultureyo/src/features/authentication/domain/entities/auth_data.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_web_auth/flutter_web_auth.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:uuid/uuid.dart';
 
 class NaverLoginService implements AuthService {
   final Dio publicDio;
@@ -14,15 +21,45 @@ class NaverLoginService implements AuthService {
 
   @override
   Future<AuthData?> login() async {
-    try {
-      final NaverLoginResult loginResult = await FlutterNaverLogin.logIn();
-      if (loginResult.status == NaverLoginStatus.loggedIn) {
-        final result = await FlutterNaverLogin.getCurrentAccessToken();
-        return await sendTokenToServer(result.accessToken, result.refreshToken);
+    if(kIsWeb){
+      const clientId= '8XgvP4M5te0wNrohCIyF';
+      const redirectUri = 'https://dartroll-nodejs-sub.onrender.com/api/auth/naver/callback';
+      final state = const Uuid().v4();
+
+      final authUrl = Uri.parse(
+          'https://nid.naver.com/oauth2.0/authorize?response_type=code'
+          '&client_id=$clientId'
+          '&redirect_uri=$redirectUri'
+          '&state=$state');
+      try {
+        // 네이버 로그인 페이지 열기
+        if (await canLaunchUrl(authUrl)) {
+          await launchUrl(authUrl);
+        } else {
+          if (kDebugMode) {
+            print('Could not launch URL');
+          }
+        }
+      } catch(e) {
+        if (kDebugMode) {
+          print('Error launching URL: $e');
+        }
       }
-      return null;
-    } catch (_) {
-      return null;
+    } else {
+      try {
+        final NaverLoginResult loginResult = await FlutterNaverLogin.logIn();
+        if (loginResult.status == NaverLoginStatus.loggedIn) {
+          final result = await FlutterNaverLogin.getCurrentAccessToken();
+          return await sendTokenToServer(
+              result.accessToken, result.refreshToken);
+        }
+        return null;
+      } catch (_) {
+        if (kDebugMode) {
+          debugPrint('Naver login error: $_');
+        }
+        return null;
+      }
     }
   }
 

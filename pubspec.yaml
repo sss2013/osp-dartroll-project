@@ -51,6 +51,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: "^0.13.1"
 
   # Code generation
   build_runner: ^2.4.7
@@ -75,3 +76,9 @@ flutter:
     - assets/images/icons/naver_icon.png
     - .env
 
+flutter_launcher_icons:
+  # 사용할 이미지 파일 경로 (1단계에서 저장한 경로)
+  image_path: "assets/images/icons/cultureyo_icon.jpg"
+
+  # 아이콘을 적용할 플랫폼 지정 (기본적으로 모두 true)
+  android: true

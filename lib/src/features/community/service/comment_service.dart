@@ -10,14 +10,14 @@ import 'package:cultureyo/src/core/network/dio_client.dart';
 // ⭐ [신규 추가] 댓글 신고 API 응답을 위한 모델 (API 명세 반영)
 class CommentReportResult {
   final bool reported; // 토글 후 사용자의 최종 신고 상태 (신고함: true, 신고 안 함: false)
-  final int reporteCount; // 신고 누적 횟수 (서버 필드명 repoteCount 반영)
+  final int reportedCount; // 신고 누적 횟수 (서버 필드명 repoteCount 반영)
 
-  CommentReportResult({required this.reported, required this.reporteCount});
+  CommentReportResult({required this.reported, required this.reportedCount});
 
   factory CommentReportResult.fromJson(Map<String, dynamic> json) {
     return CommentReportResult(
-      reported: json['repoted'] as bool? ?? false,
-      reporteCount: json['repoteCount'] as int? ?? 0,
+      reported: json['reported'] as bool? ?? false,
+      reportedCount: json['reportedCount'] as int? ?? 0,
     );
   }
 }
@@ -148,6 +148,10 @@ class CommentService {
     final String endpoint = '/api/post/$commentId/commentreport';
 
     log('▶️ [COMMENT_REPORT_REQUEST] URL: $endpoint', name: 'API_SERVICE_REPORT');
+    log('▶️ [COMMENT_REPORT_REQUEST] URL: $endpoint', name: 'API_SERVICE_REPORT');
+    log('📌 신고 요청 commentId: $commentId', name: 'API_SERVICE_REPORT');
+    log('🔑 Authorization: ${dio.options.headers['Authorization']}', name: 'API_SERVICE_REPORT');
+    log('📤 Payload: {}', name: 'API_SERVICE_REPORT');
 
     try {
       final response = await dio.post(endpoint, data: {});

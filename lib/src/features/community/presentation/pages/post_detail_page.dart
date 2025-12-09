@@ -24,9 +24,8 @@ class PostDetailPage extends StatefulWidget {
 
 class _PostDetailPageState extends State<PostDetailPage> {
   late int likes;
-  // ⭐ [신규 추가] 게시물 신고 상태 변수
   late bool _isPostReported;
-  late int _postReportCount;
+  late int _postReportedCount;
 
   final TextEditingController _commentController = TextEditingController();
   final FocusNode _commentFocusNode = FocusNode();
@@ -56,9 +55,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
   void initState() {
     super.initState();
     likes = widget.post.likes;
-    // ⭐ [추가] 초기 게시물 신고 상태 설정
     _isPostReported = widget.post.reported;
-    _postReportCount = widget.post.reporteCount;
+    _postReportedCount = widget.post.reportedCount;
   }
 
   @override
@@ -68,6 +66,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     _postService = context.read<PostService>();
     _userService = context.read<UserService>();
 
+    // 1. 최초 로드: 사용자 ID가 로드되지 않았고, 로딩이 필요하다면 로드 시작
     if (_currentUserId == null && _isUserIdLoading) {
       _loadCurrentUserAndComments();
     }
@@ -153,19 +152,39 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
   Future<void> _fetchComments() async {
     if (!mounted) return;
-    _cancelReplying();
 
-    setState(() {
-      _isLoadingComments = true;
-    });
+    // 댓글 로딩 중이 아니라면 로딩 시작 상태로 전환
+    if (!_isLoadingComments) {
+      setState(() {
+        _isLoadingComments = true;
+      });
+    }
+
+    _cancelReplying(); // 답글 입력 상태 해제
 
     try {
       final fetchedComments = await _commentService.fetchComments(widget.post.id);
 
+      // ⭐ [수정 시작] 댓글 상태 계산 로직 (좋아요 여부 반영)
+      final List<Comment> processedComments = fetchedComments.map((comment) {
+
+        // 1. 현재 유저 ID가 좋아요 누른 유저 목록에 포함되어 있는지 확인
+        final bool isLikedByCurrentUser = _currentUserId != null
+            ? comment.likeUserIds.contains(_currentUserId)
+            : false; // 유저 ID가 없으면 false
+
+        // 2. copyWith를 사용하여 계산된 liked 상태를 덮어씌웁니다.
+        return comment.copyWith(liked: isLikedByCurrentUser);
+
+      }).toList();
+      // ⭐ [수정 종료]
+
+
       if (mounted) {
         setState(() {
           _isLoadingComments = false;
-          _comments = _sortCommentsByHierarchy(fetchedComments);
+          // ⭐ 처리된 댓글 목록으로 업데이트
+          _comments = _sortCommentsByHierarchy(processedComments);
         });
       }
     } on DioException catch (e) {
@@ -224,7 +243,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
-  // 게시물 좋아요 토글 API 호출 (변경 없음)
+  // 게시물 좋아요 토글 API 호출
   Future<void> _toggleLikeApi() async {
     if (_currentUserId == null || _isUserIdLoading || _currentUserId == 'guest_unauth') {
       _showSnackbar('로그인된 사용자만 추천할 수 있습니다.', duration: const Duration(seconds: 2));
@@ -262,7 +281,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
-  // 게시물 신고 API 호출 및 UI 처리 (변경 없음)
+  // 게시물 신고 API 호출 및 UI 처리
   Future<void> _toggleReportPostApi() async {
     // 1. 권한 확인 (로그인 필요)
     if (_currentUserId == null || _isUserIdLoading || _currentUserId == 'guest_unauth') {
@@ -282,25 +301,30 @@ class _PostDetailPageState extends State<PostDetailPage> {
         widget.post.category, // body: {"tap": category} 전송
       );
 
+      log('✅ [POST_REPORT_SUCCESS] API Response reported: ${result.reported}, count: ${result.reportedCount}', name: 'POST_REPORT');
+
       if (mounted) {
         // 1. 로컬 상태 업데이트
         setState(() {
           _isPostReported = result.reported;
-          _postReportCount = result.reporteCount;
+          _postReportedCount = result.reportedCount;
         });
 
-        // 2. 스낵바 메시지 출력
+        // 2. 스낵바 메시지 출력 로직 수정
         String message;
+
         if (result.reported) {
+          // 🚨 (1) 신고 성공 (reported: true)
           message = '게시글을 신고 처리했습니다.';
-          if (_postReportCount >= 3) {
+          if (_postReportedCount >= 3) {
             message += ' (게시물 차단이 적용되었습니다.)';
           }
         } else {
-          message = '신고 처리 중 오류가 발생했습니다.';
+          // 🚨 (2) 중복 신고/이미 신고된 상태 (reported: false) - 정상 처리
+          message = '이미 신고한 게시글입니다.'; // 또는 '이미 신고 처리가 완료되었습니다.'
         }
 
-        _showSnackbar('$message (누적 신고: ${result.reporteCount}회)', duration: const Duration(seconds: 2));
+        _showSnackbar('$message ((테스트용)누적 신고: ${_postReportedCount}회)', duration: const Duration(seconds: 2));
       }
 
     } on DioException catch (e) {
@@ -320,25 +344,29 @@ class _PostDetailPageState extends State<PostDetailPage> {
     final int index = _comments.indexWhere((c) => c.id == commentId);
     if (index != -1) {
       final oldComment = _comments[index];
-      final updatedComment = Comment(
-        id: oldComment.id,
-        postId: oldComment.postId,
-        userId: oldComment.userId,
-        text: oldComment.text,
-        parentId: oldComment.parentId,
-        isDeleted: oldComment.isDeleted,
-        createdAt: oldComment.createdAt,
-        updatedAt: oldComment.updatedAt,
-        authorNickname: oldComment.authorNickname,
 
+      // ⭐ [수정 시작] likeUserIds 로컬 업데이트 로직 추가
+      final List<String> updatedLikeIds = List.from(oldComment.likeUserIds);
+
+      if (_currentUserId != null) {
+        if (isLiked) {
+          // 좋아요를 누른 경우: ID 추가 (중복 방지)
+          if (!updatedLikeIds.contains(_currentUserId!)) {
+            updatedLikeIds.add(_currentUserId!);
+          }
+        } else {
+          // 좋아요를 취소한 경우: ID 제거
+          updatedLikeIds.remove(_currentUserId!);
+        }
+      }
+      // ⭐ [수정 종료]
+
+      // copyWith를 사용하여 깔끔하게 업데이트합니다.
+      final updatedComment = oldComment.copyWith(
         // ⭐ [업데이트] 좋아요 필드
         likes: newLikesCount,
         liked: isLiked,
-
-        // ✅ [오류 해결] replies 필드가 이제 Comment 모델에 있으므로 안전하게 복사
-        replies: oldComment.replies,
-        reporteCount: oldComment.reporteCount,
-        reported: oldComment.reported,
+        likeUserIds: updatedLikeIds, // ⭐ 갱신된 ID 목록 반영
       );
 
       setState(() {
@@ -349,27 +377,13 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
 
   // 댓글 신고 상태를 로컬에서 업데이트하는 헬퍼 함수 (기존)
-  void _updateCommentReportStatus(String commentId, int newReporteCount, bool isReported) {
+  void _updateCommentReportStatus(String commentId, int newReportedCount, bool isReported) {
     final int index = _comments.indexWhere((c) => c.id == commentId);
     if (index != -1) {
       final oldComment = _comments[index];
-      final updatedComment = Comment(
-        id: oldComment.id,
-        postId: oldComment.postId,
-        userId: oldComment.userId,
-        text: oldComment.text,
-        parentId: oldComment.parentId,
-        isDeleted: oldComment.isDeleted,
-        createdAt: oldComment.createdAt,
-        updatedAt: oldComment.updatedAt,
-        authorNickname: oldComment.authorNickname,
-        likes: oldComment.likes,
-        // ⭐ [유지] 좋아요 필드
-        liked: oldComment.liked,
-
-        // ✅ [오류 해결] replies 필드 복사
-        replies: oldComment.replies,
-        reporteCount: newReporteCount,
+      // copyWith를 사용하여 갱신
+      final updatedComment = oldComment.copyWith(
+        reportedCount: newReportedCount,
         reported: isReported,
       );
 
@@ -399,7 +413,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
       final result = await _commentService.toggleCommentLike(comment.id);
 
       if (mounted) {
-        // 1. 로컬 상태 업데이트
+        // 1. 로컬 상태 업데이트 (현재 좋아요 누른 상태를 반영)
         _updateCommentLikeStatus(comment.id, result.likeCount, result.liked);
 
         // 2. 스낵바 메시지 출력
@@ -432,7 +446,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
       return;
     }
 
-    if (comment.reporteCount >= 3) {
+    if (comment.reportedCount >= 3) {
       _showSnackbar('이미 차단된 댓글입니다. 추가 신고할 수 없습니다.');
       return;
     }
@@ -443,12 +457,12 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
       if (mounted) {
 
-        _updateCommentReportStatus(comment.id, result.reporteCount, result.reported);
+        _updateCommentReportStatus(comment.id, result.reportedCount, result.reported);
 
         String message;
         if (result.reported) {
           message = '댓글을 신고 처리했습니다.';
-          if (result.reporteCount >= 3) {
+          if (result.reportedCount >= 3) {
             message += ' (누적 신고 3회 이상: 댓글이 차단됩니다.)';
           }
         } else {
@@ -629,7 +643,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
   // 댓글 아이템 빌드 함수
   Widget _buildCommentItem(Comment comment) {
     final bool isDeleted = comment.isDeleted;
-    final bool isBlockedByReport = comment.reporteCount >= 3;
+    final bool isBlockedByReport = comment.reportedCount >= 3;
     final bool isLikedByMe = comment.liked;
 
     final String displayText = isDeleted
@@ -817,7 +831,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
   @override
   Widget build(BuildContext context) {
     // 게시물 신고 누적 3회 이상 여부
-    final bool isPostBlocked = _postReportCount >= 3;
+    final bool isPostBlocked = _postReportedCount >= 3;
 
     if (_isUserIdLoading) {
       return const Scaffold(
@@ -1010,7 +1024,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       padding: const EdgeInsets.symmetric(vertical: 30.0),
                       child: Center(
                         child: Text(
-                          '게시물 내용이 신고 누적(${_postReportCount}회)으로 인해 차단되었습니다.',
+                          '게시물 내용이 신고 누적(${_postReportedCount}회)으로 인해 차단되었습니다.',
                           style: TextStyle(fontSize: 16, color: Colors.red.shade500, fontStyle: FontStyle.italic),
                         ),
                       ),
@@ -1065,7 +1079,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           Text(
-                            isPostBlocked ? '이 게시물은 차단 상태입니다. (누적 신고: $_postReportCount)' : '이미 신고한 게시글입니다. (누적 신고: $_postReportCount)',
+                            isPostBlocked ? '이 게시물은 차단 상태입니다. (누적 신고: $_postReportedCount)' : '이미 신고한 게시글입니다. (누적 신고: $_postReportedCount)',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.red.shade700,
@@ -1083,7 +1097,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.grey[200],
+                          color: Colors.blue[200],
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: Row(
@@ -1092,14 +1106,14 @@ class _PostDetailPageState extends State<PostDetailPage> {
                             const Icon(
                               Icons.thumb_up_outlined,
                               size: 20,
-                              color: Colors.black,
+                              color: Colors.white,
                             ),
                             const SizedBox(width: 6),
                             const Text(
                               '추천하기',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.black,
+                                color: Colors.white,
                                 fontWeight: FontWeight.normal,
                               ),
                             ),

@@ -48,7 +48,12 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
     '서울',
     '세종',
     '울산',
-    '인천'
+    '인천',
+    '제주',
+    '전북',
+    '전남',
+    '충남',
+    '충북',
   ];
 
   final Set<String> selectedCategories = {};

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:provider/provider.dart';
+import 'package:cultureyo/src/features/profile/domain/user_service.dart';
 
 class MyInfoPage extends StatefulWidget {
   const MyInfoPage({super.key});
@@ -8,11 +11,42 @@ class MyInfoPage extends StatefulWidget {
 }
 
 class _MyInfoPageState extends State<MyInfoPage> {
-  String _nickname = "멋진개발자";
+  String _nickname = "불러오는 중...";
   String _bio = "오늘도 즐거운 하루 되세요!";
 
   final TextEditingController _nicknameController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserInfo();
+    });
+  }
+//내정보 가져오기
+  Future<void> _loadUserInfo() async {
+    try {
+      if (!mounted) return;
+      //main.dart에 있는 UserService 가져오기
+      final userService = context.read<UserService>();
+
+      final userData = await userService.loadUserName();
+
+      if (mounted && userData.containsKey('name')) {
+        setState(() {
+          _nickname = userData['name'];
+        });
+      }
+    } catch (e) {
+      print("정보 로드 실패: $e");
+      if(mounted) {
+        setState(() {
+          _nickname = "정보 없음";
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -57,38 +91,36 @@ class _MyInfoPageState extends State<MyInfoPage> {
               ),
               child: Column(
                 children: [
-                  GestureDetector(
-                    onTap: _changeProfileImage,
-                    child: Stack(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
+                  Stack(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.lightBlue.withOpacity(0.2), width: 2),
+                        ),
+                        child: const CircleAvatar(
+                          radius: 45,
+                          backgroundImage: AssetImage("assets/images/profile_default.png"),
+                          child: Icon(Icons.person, size: 45, color: Colors.white),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: const BoxDecoration(
+                            color: Colors.lightBlue,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.lightBlue.withOpacity(0.2), width: 2),
                           ),
-                          child: const CircleAvatar(
-                            radius: 45,
-                            backgroundImage: AssetImage("assets/images/profile_default.png"),
-                            child: Icon(Icons.person, size: 45, color: Colors.white),
-                          ),
+                          child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
                         ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: Colors.lightBlue,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
+
                   Text(
                     _nickname,
                     style: const TextStyle(
@@ -98,6 +130,7 @@ class _MyInfoPageState extends State<MyInfoPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
+
                   InkWell(
                     onTap: _showBioDialog,
                     borderRadius: BorderRadius.circular(8),
@@ -121,7 +154,7 @@ class _MyInfoPageState extends State<MyInfoPage> {
             ),
 
             const SizedBox(height: 20),
-
+            
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 20),
               decoration: BoxDecoration(
@@ -142,12 +175,6 @@ class _MyInfoPageState extends State<MyInfoPage> {
                     title: "닉네임 변경",
                     value: _nickname,
                     onTap: _showNicknameDialog,
-                  ),
-                  _divider(),
-                  _infoTile(
-                    icon: Icons.phone_iphone,
-                    title: "전화번호",
-                    value: "010-1234-5678",
                   ),
                   _divider(),
                   _infoTile(
@@ -185,55 +212,25 @@ class _MyInfoPageState extends State<MyInfoPage> {
     );
   }
 
-  Widget _divider() {
-    return Divider(height: 1, thickness: 1, color: Colors.grey[100]);
-  }
+  Widget _divider() => Divider(height: 1, thickness: 1, color: Colors.grey[100]);
 
-  Widget _infoTile({
-    required IconData icon,
-    required String title,
-    required String value,
-    VoidCallback? onTap,
-    bool isLink = false,
-  }) {
+  Widget _infoTile({required IconData icon, required String title, required String value, VoidCallback? onTap, bool isLink = false}) {
     return ListTile(
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       leading: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.blueGrey[50],
-          borderRadius: BorderRadius.circular(10),
-        ),
+        decoration: BoxDecoration(color: Colors.blueGrey[50], borderRadius: BorderRadius.circular(10)),
         child: Icon(icon, color: Colors.lightBlue, size: 22),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.black54),
-      ),
+      title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.black54)),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: isLink ? Colors.lightBlue : Colors.black87,
-            ),
-          ),
-          if (onTap != null) ...[
-            const SizedBox(width: 8),
-            const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-          ]
+          Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isLink ? Colors.lightBlue : Colors.black87)),
+          if (onTap != null) ...[const SizedBox(width: 8), const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey)]
         ],
       ),
-    );
-  }
-
-  void _changeProfileImage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("사진 선택 기능구현.")),
     );
   }
 
@@ -251,9 +248,7 @@ class _MyInfoPageState extends State<MyInfoPage> {
             decoration: const InputDecoration(
               hintText: "새로운 닉네임을 입력하세요",
               border: OutlineInputBorder(),
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.lightBlue),
-              ),
+              focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.lightBlue)),
             ),
             autofocus: true,
           ),
@@ -268,10 +263,9 @@ class _MyInfoPageState extends State<MyInfoPage> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               onPressed: () {
-                if (_nicknameController.text.isNotEmpty) {
-                  setState(() {
-                    _nickname = _nicknameController.text;
-                  });
+                final newName = _nicknameController.text.trim();
+                if (newName.isNotEmpty) {
+                  _updateNickname(newName);
                   Navigator.pop(context);
                 }
               },
@@ -283,50 +277,79 @@ class _MyInfoPageState extends State<MyInfoPage> {
     );
   }
 
+//닉네임 변경
+  Future<void> _updateNickname(String newName) async {
+    try {
+      if (!mounted) return;
+      //Provider로 UserService 가져오기
+      final userService = context.read<UserService>();
+
+      // 정보 로드하고
+      final currentUserData = await userService.loadUserAll();
+
+      // 데이터 피싱
+      final int birth = currentUserData['birth'] is int
+          ? currentUserData['birth']
+          : int.tryParse(currentUserData['birth'].toString()) ?? 2000;
+
+      final Set<String> categories = (currentUserData['categories'] as List?)
+          ?.map((e) => e.toString())
+          .toSet() ?? {};
+
+      final Set<String> regions = (currentUserData['regions'] as List?)
+          ?.map((e) => e.toString())
+          .toSet() ?? {};
+
+      // 이름만 바꾸고 다시 저장
+      await userService.saveUserData(
+        name: newName,
+        year: birth,
+        categories: categories,
+        regions: regions,
+      );
+
+      // 갱신
+      if (mounted) {
+        setState(() {
+          _nickname = newName;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("닉네임이 변경되었습니다.")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("닉네임 변경 실패: ${e.toString()}")),
+        );
+      }
+    }
+  }
+
   void _showBioDialog() {
     _bioController.text = _bio;
-
     showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text("자기소개 변경"),
-          content: TextField(
-            controller: _bioController,
-            decoration: const InputDecoration(
-              hintText: "나를 표현할 한마디를 적어보세요",
-              border: OutlineInputBorder(),
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.lightBlue),
-              ),
+        context: context,
+        builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text("자기소개 변경"),
+            content: TextField(
+              controller: _bioController,
+              decoration: const InputDecoration(hintText: "내용 입력", border: OutlineInputBorder()),
+              maxLines: 2,
             ),
-            maxLines: 2,
-            autofocus: true,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("취소", style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.lightBlue,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              onPressed: () {
-                if (_bioController.text.isNotEmpty) {
-                  setState(() {
-                    _bio = _bioController.text;
-                  });
+            actions: [
+              TextButton(onPressed: ()=>Navigator.pop(context), child: const Text("취소")),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.lightBlue),
+                onPressed: () {
+                  setState(() { _bio = _bioController.text; });
                   Navigator.pop(context);
-                }
-              },
-              child: const Text("저장", style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
+                },
+                child: const Text("저장", style: TextStyle(color: Colors.white)),
+              )
+            ]
+        )
     );
   }
 
@@ -351,14 +374,8 @@ class _MyInfoPageState extends State<MyInfoPage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        "서비스 이용 약관",
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close),
-                      ),
+                      const Text("서비스 이용 약관", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
                     ],
                   ),
                 ),
@@ -434,15 +451,9 @@ class _TermSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
-          ),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
           const SizedBox(height: 8),
-          Text(
-            content,
-            style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black54),
-          ),
+          Text(content, style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black54)),
         ],
       ),
     );

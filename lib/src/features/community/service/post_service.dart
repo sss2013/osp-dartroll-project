@@ -18,6 +18,7 @@ class PostService {
   // 1. 게시글 목록을 가져오는 API 함수 (인증 불필요 - publicDio 사용)
   Future<List<Post>> fetchPosts(String category) async {
     final publicDio = dioClient.publicDio;
+
     final url = '/api/post/getAll?page=0&limit=100&tap=$category';
 
     log('🔍 [API_REQUEST] Fetching posts from service: $url', name: 'POST_SERVICE');
@@ -25,11 +26,14 @@ class PostService {
     try {
       final response = await publicDio.get(url);
 
+      final List<dynamic> jsonList = response.data;
+
+      log('➡️ [RAW_JSON_DATA_ALL] All Posts Data: $jsonList', name: 'POST_SERVICE_RAW');
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         final List<dynamic> jsonList = response.data;
 
         log('✅ [API_RESPONSE] Count: ${jsonList.length}', name: 'POST_SERVICE');
-
         return jsonList.map((json) {
           return Post.fromApiJson(
             json as Map<String, dynamic>,

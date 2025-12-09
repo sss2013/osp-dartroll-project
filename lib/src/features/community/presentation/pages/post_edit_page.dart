@@ -228,7 +228,7 @@ class _PostEditPageState extends State<PostEditPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.lightBlue,
+        backgroundColor: Colors.blue[200],
         title: const Text(
           '게시글 수정',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),

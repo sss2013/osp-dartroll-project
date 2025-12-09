@@ -48,7 +48,7 @@ class _PostWritePageState extends State<PostWritePage> {
   PerformanceDetail? selectedPerformanceDetail;
 
   final List<String> regions = [
-    '강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '지역 미정'
+    '강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '온라인'
   ];
 
   // 장르 항목에 '행사/축제'와 '교육/체험' 추가
@@ -117,7 +117,7 @@ class _PostWritePageState extends State<PostWritePage> {
     final Map<String, dynamic> requestBody = {
       "title": titleController.text,
       // 💡 [수정] "userId": currentUserId, // 테스트 userId 반영 로직 제거
-      "area": detail.area ?? '지역 미정',
+      "area": detail.area ?? '온라인',
       "genre": finalGenre, // 최종 결정된 장르 값 사용
       "content": contentController.text, // content -> context로 필드명 변경 (원래 로직 유지)
       "url": performanceUrl,
@@ -277,7 +277,7 @@ class _PostWritePageState extends State<PostWritePage> {
                   children: [
                     // --- 상단 헤더 ---
                     Container(
-                      color: Colors.lightBlue,
+                      color: Colors.blue[200],
                       padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
                       child: Column(
                         children: [
@@ -649,7 +649,7 @@ class _PostWritePageState extends State<PostWritePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.lightBlue,
+        backgroundColor: Colors.blue[200],
         title: const Text(
           '게시글 작성',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -752,21 +752,6 @@ class _PostWritePageState extends State<PostWritePage> {
 
                   const SizedBox(height: 60),
                 ],
-              ),
-            ),
-          ),
-          Positioned(
-            left: 12,
-            bottom: 12,
-            child: ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.image, color: Colors.black),
-              label: const Text('사진 업로드',
-                  style: TextStyle(color: Colors.black)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
               ),
             ),
           ),

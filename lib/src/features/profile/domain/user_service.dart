@@ -26,11 +26,55 @@ class UserService {
     try {
       final response = await dio.post('/api/user/saveProfile', data: data);
 
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception('Failed to save user data: ${response.statusCode}');
+      if (response.statusCode != 200) { // 201은 보통 '생성됨'을 의미하므로, '업데이트'에서는 200이 더 적합합니다.
+        throw Exception('Failed to check user name: ${response.statusCode}');
       }
     } on DioException catch (e) {
       throw Exception('Failed to save user data: ${e.message}');
+    } catch (e) {
+      throw Exception('An unexpected error occurred: $e');
+    }
+  }
+
+  Future<bool> checkName(String name) async {
+    final dio = dioClient.publicDio;
+
+    try {
+      final response = await dio.get('/api/user/checkName?name=$name');
+      if (response.statusCode != 200) { // 201은 보통 '생성됨'을 의미하므로, '업데이트'에서는 200이 더 적합합니다.
+        throw Exception('Failed to change user name: ${response.statusCode}');
+      }
+
+      final data = response.data;
+      return data['exists'] as bool;
+    } on DioException catch (e) {
+      throw Exception('Failed to check user name: ${e.message}');
+    } catch (e) {
+      throw Exception('An unexpected error occurred: $e');
+    }
+  }
+
+  Future<bool> changeName(String newName) async {
+    final check = await checkName(newName);
+
+    if (check) {
+      return false;
+    }
+
+    final dio = dioClient.dio;
+    final data ={
+      'newName': newName,
+    };
+
+    try {
+      final response = await dio.post('/api/user/changeName',data:data);
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Failed to change user name: ${response.statusCode}');
+      }
+      final result = response.data;
+      return result['result'] as bool;
+    } on DioException catch (e) {
+      throw Exception('Failed to change user name: ${e.message}');
     } catch (e) {
       throw Exception('An unexpected error occurred: $e');
     }

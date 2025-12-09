@@ -7,7 +7,7 @@ class DioClient {
   late final Dio dio; // 인증이 필요한 API용 Dio 인스턴스
   late final Dio publicDio; // 인증이 필요 없는 API용 Dio 인스턴스 (로그인, 토큰 교환 등)
 
-  final String _baseUrl = 'https://dartroll-nodejs.onrender.com';
+  final String _baseUrl = 'https://dartroll-nodejs-sub.onrender.com';
 
   bool _isRefreshing = false;
   List<Map<String, dynamic>> _failedRequests = [];

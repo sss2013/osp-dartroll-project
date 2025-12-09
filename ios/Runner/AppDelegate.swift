@@ -15,7 +15,7 @@ import NidThirdPartyLogin
     NidOAuth.shared.initialize(
         appName: "컬쳐요",
         clientId: "RdMhFpaVD7Wo8hOvdeAP",
-        clientSecret:"JqfrUIYa8T"
+        clientSecret:""
     )
     // --- 네이버 로그인 SDK 초기화 --
 

@@ -1,70 +1,76 @@
-// import 'package:cultureyo/src/features/chat/service/chat_service.dart';
-// import 'package:flutter/material.dart';
-// import 'package:provider/provider.dart';
-//
-// class ChatPage extends StatefulWidget {
-//   const ChatPage({super.key});
-//
-//   @override
-//   State<ChatPage> createState() => _ChatPageState();
+import 'package:cultureyo/src/features/chat/service/chat_service.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+class ChatPage extends StatefulWidget {
+  const ChatPage({super.key});
+
+  @override
+  State<ChatPage> createState() => _ChatPageState();
+}
+
+class _ChatPageState extends State<ChatPage> {
+  late final chatService = context.read<ChatService>();
+
+  @override
+  Widget build(BuildContext context) {
+    // TODO: implement build
+    throw UnimplementedError();
+  }
+
+
+  // @override
+  // Widget build(BuildContext context) {
+    // return Scaffold(
+    //   appBar: AppBar(
+    //     actions: [IconButton(onPressed: (){Navigator.push(context,MaterialPageRoute(builder: (_)=>ChatSearchPage(allRooms: chatRooms),));}, icon: const Icon(Icons.search))],
+    //     title: Align(
+    //       alignment: Alignment.centerLeft,
+    //       child: const Text(
+    //         '채팅',
+    //         style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold),
+    //       ),
+    //     ),
+    //     backgroundColor: Colors.lightBlue,
+    //     centerTitle: true,
+    //   )
+    // body: ListView.builder(
+    // itemCount: chatRooms.length,
+    // itemBuilder: (context, index) {
+    //   // final room = chatRooms[index];
+    //   final lastMsg = room.messages.isNotEmpty
+    //       ? room.messages.last.text
+    //       : "메시지가 없습니다";
+    //   return ListTile(
+    //     leading: CircleAvatar(
+    //       backgroundColor: Colors.lightBlue,
+    //       child: Text(room.title[0], style: const TextStyle(color: Colors.white)),
+    //       //backgroundImage: NetworkImage(),
+    //     ),
+    //     title: Text(room.title),
+    //     subtitle: Text(lastMsg),
+    //     trailing: Text( _formatDateTime(room.messages.last.time), style: TextStyle(color: Colors.grey[600], fontSize: 12),),
+    //     onTap: () async {
+    //       final updatedRoom = await Navigator.push(
+    //         context,
+    //         MaterialPageRoute(
+    //           builder: (_) => ChatRoomPage(chatRoom: room),
+    //         ),
+    //       );
+    //       if (updatedRoom != null && updatedRoom is ChatRoom) {
+    //         setState(() {
+    //           chatRooms[index] = updatedRoom;
+    //         });
+    //             }
+    //           },
+    //         );
+    //       },
+    //     ),
+    //   );
+    // }
+  }
 // }
-//
-// class _ChatPageState extends State<ChatPage> {
-//   late final chatService = context.read<ChatService>();
-//   List<ChatRoom> chatRooms=
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         actions: [IconButton(onPressed: (){Navigator.push(context,MaterialPageRoute(builder: (_)=>ChatSearchPage(allRooms: chatRooms),));}, icon: const Icon(Icons.search))],
-//         title: Align(
-//           alignment: Alignment.centerLeft,
-//           child: const Text(
-//             '채팅',
-//             style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold),
-//           ),
-//         ),
-//         backgroundColor: Colors.lightBlue,
-//         centerTitle: true,
-//       ),
-//       body: ListView.builder(
-//         itemCount: chatRooms.length,
-//         itemBuilder: (context, index) {
-//           final room = chatRooms[index];
-//           final lastMsg = room.messages.isNotEmpty
-//               ? room.messages.last.text
-//               : "메시지가 없습니다";
-//           return ListTile(
-//             leading: CircleAvatar(
-//               backgroundColor: Colors.lightBlue,
-//               child: Text(room.title[0], style: const TextStyle(color: Colors.white)),
-//               //backgroundImage: NetworkImage(),
-//             ),
-//             title: Text(room.title),
-//             subtitle: Text(lastMsg),
-//             trailing: Text( _formatDateTime(room.messages.last.time), style: TextStyle(color: Colors.grey[600], fontSize: 12),),
-//             onTap: () async {
-//               final updatedRoom = await Navigator.push(
-//                 context,
-//                 MaterialPageRoute(
-//                   builder: (_) => ChatRoomPage(chatRoom: room),
-//                 ),
-//               );
-//               if (updatedRoom != null && updatedRoom is ChatRoom) {
-//                 setState(() {
-//                   chatRooms[index] = updatedRoom;
-//                 });
-//               }
-//             },
-//           );
-//         },
-//       ),
-//     );
-//   }
-// }
-//
-//
+
 // class ChatRoomPage extends StatefulWidget {
 //   final ChatRoom chatRoom;
 //   const ChatRoomPage({super.key, required this.chatRoom});

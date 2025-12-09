@@ -22,7 +22,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _pages = [
     HomePage(),
     BoardPage(),
-    // ChatPage(),
+    ChatPage(),
     MyInfoPage(),
   ];
 

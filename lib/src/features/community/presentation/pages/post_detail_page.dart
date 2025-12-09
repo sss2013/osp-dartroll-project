@@ -597,14 +597,120 @@ class _PostDetailPageState extends State<PostDetailPage> {
     );
   }
 
+  // 게시글 작성자 프로필 팝업을 띄우는 메서드
+  void _showAuthorProfileDialog(BuildContext context) {
+    final authorNickname = widget.post.author; // 게시글 작성자의 닉네임
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), // 모서리 둥글기 증가
+          backgroundColor: Colors.white,
+          contentPadding: EdgeInsets.zero, // 내부 패딩 제거
+          content: Container(
+            width: MediaQuery.of(context).size.width * 0.8, // 너비 설정
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 제목
+                Text(
+                  '$authorNickname님의 프로필',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87),
+                ),
+                const SizedBox(height: 20),
+
+                // 프로필 아이콘 (MyInfoPage 스타일 반영)
+                Stack(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.lightBlue.withOpacity(0.2), width: 2),
+                      ),
+                      child: const CircleAvatar(
+                        radius: 45,
+                        // 이미지 대신 아이콘 사용
+                        child: Icon(Icons.person, size: 45, color: Colors.white),
+                        //backgroundColor: Colors.lightBlue, // 배경색 추가
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // 닉네임
+                Text(
+                  authorNickname,
+                  style: const TextStyle(
+                    fontSize: 24, // 크기 증가
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // 1:1 채팅하기 버튼 (MyInfoPage 스타일 참고)
+                ElevatedButton.icon(
+                  onPressed: () {
+                    // TODO: 1:1 채팅하기 기능 구현
+                    _showSnackbar('1:1 채팅 기능은 아직 구현되지 않았습니다.');
+                    Navigator.of(context).pop();
+                  },
+                  icon: const Icon(Icons.chat_bubble_outline, size: 20),
+                  label: const Text('1:1 채팅하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.blue[200],
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // 닫기 버튼 (ElevatedButton 형식으로 변경 및 스타일 수정)
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[200], // 배경색 투명
+                    foregroundColor: Colors.white, // 텍스트 색상
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey.shade300, width: 1), // 테두리 추가
+                    ),
+                    elevation: 2, // 그림자 제거
+                    shadowColor: Colors.transparent,
+                  ),
+                  child: const Text(
+                    '닫기',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+
   // 댓글 아이템 빌드 함수
   Widget _buildCommentItem(Comment comment) {
     final bool isDeleted = comment.isDeleted;
     final bool isBlockedByReport = comment.reportedCount >= 3;
-
-    // ⭐ [수정 1] liked, reported 상태를 서버에서 받지 않으므로 로컬에서 UI에 반영하는 로직 제거
-    // final bool isLikedByMe = comment.liked;
-    // final bool canReportComment = !isDeleted && !isBlockedByReport && !isMyComment && !comment.reported;
 
     final String displayText = isDeleted
         ? '삭제된 댓글입니다.'
@@ -623,7 +729,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
     // 좋아요 버튼 표시 여부: 삭제/차단되지 않은 댓글
     final bool showLikeButton = !isDeleted && !isBlockedByReport;
 
-    // ⭐ [수정 2] 좋아요 버튼 아이콘과 색상을 상태와 관계없이 고정
     const IconData likeIcon = Icons.thumb_up_outlined;
     const Color likeColor = Colors.blue;
 
@@ -631,162 +736,179 @@ class _PostDetailPageState extends State<PostDetailPage> {
     final bool showReportButton = !isDeleted && !isBlockedByReport && !isMyComment;
 
 
-    return Padding(
-      padding: EdgeInsets.only(left: leftPadding, top: 6, bottom: 6),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isReplyingToThis ? Colors.yellow[50] : Colors.white,
-          border: Border.all(color: isReplyingToThis ? Colors.orange : Colors.grey[300]!),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 닉네임, 날짜
-            Row(
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.only(left: leftPadding, top: 6, bottom: 6),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isReplyingToThis ? Colors.yellow[50] : Colors.white,
+              border: Border.all(color: isReplyingToThis ? Colors.orange : Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const CircleAvatar(
-                  radius: 18,
-                  child: Icon(Icons.person, size: 18),
+                // 닉네임, 날짜
+                Row(
+                  children: [
+                    const CircleAvatar(
+                      radius: 18,
+                      child: Icon(Icons.person, size: 18),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        comment.authorNickname,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    Text(
+                      _formatDate(comment.createdAt),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    comment.authorNickname,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                const SizedBox(height: 8),
+
+                // ⭐ [수정된 부분]: 댓글 본문 내용 영역을 회색 배경으로 구분
+                Padding(
+                  padding: const EdgeInsets.only(left: 44),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12), // 내용과 배경 경계 사이의 패딩
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100, // 옅은 회색 배경색 적용
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      displayText,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 14,
+                        fontStyle: (isDeleted || isBlockedByReport) ? FontStyle.italic : FontStyle.normal,
+                        fontWeight: isBlockedByReport ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
                   ),
                 ),
-                Text(
-                  _formatDate(comment.createdAt),
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                const SizedBox(height: 8),
+
+                // 답글/좋아요/삭제/신고 버튼 영역
+                Padding(
+                  padding: const EdgeInsets.only(left: 44),
+                  child: Row(
+                    children: [
+                      // ⭐ [수정]: 답글 작성 버튼 (blue[200] 배경, 흰색 텍스트)
+                      if (!isDeleted && !isBlockedByReport && comment.parentId == null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[200], // blue[200] 배경색
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: TextButton(
+                            onPressed: () => _setReplyingTo(comment),
+                            child: const Text('답글 작성', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)), // 흰색 텍스트
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                              minimumSize: const Size(0, 0),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                        ),
+
+                      if (!isDeleted && !isBlockedByReport && comment.parentId == null)
+                        const SizedBox(width: 8),
+
+                      // 답글 모드 해제 버튼
+                      if (isReplyingToThis)
+                        TextButton(
+                          onPressed: _cancelReplying,
+                          child: const Text('답글 취소', style: TextStyle(fontSize: 12, color: Colors.orange)),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                            minimumSize: const Size(0, 0),
+                          ),
+                        ),
+
+                      // ⭐ [수정된 부분]: 좋아요 버튼 디자인
+                      if (showLikeButton)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[200], // ✅ blue[200] 배경색 적용
+                            borderRadius: BorderRadius.circular(8), // 둥근 모서리
+                          ),
+                          child: TextButton.icon(
+                            onPressed: () => _toggleLikeCommentApi(comment),
+                            icon: const Icon(likeIcon, size: 14, color: Colors.white), // ✅ 아이콘 색상 흰색
+                            label: Text(
+                                '${comment.likes}',
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.white, // ✅ 텍스트 색상 흰색
+                                    fontWeight: FontWeight.normal)),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                              minimumSize: const Size(0, 0),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap, // 버튼 클릭 영역 최소화
+                            ),
+                          ),
+                        ),
+                      const Spacer(),
+                      // 댓글 삭제 버튼
+                      if (canDeleteComment)
+                        TextButton(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: const Text("댓글 삭제"),
+                                  content: const Text("이 댓글을 정말로 삭제하시겠습니까?"),
+                                  actions: <Widget>[
+                                    TextButton(child: const Text("취소"), onPressed: () => Navigator.of(context).pop()),
+                                    TextButton(
+                                      child: const Text("삭제", style: TextStyle(color: Colors.red)),
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                        _deleteCommentApi(comment.id);
+                                      },
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                          child: const Text('삭제', style: TextStyle(fontSize: 12, color: Colors.red)),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                            minimumSize: const Size(0, 0),
+                          ),
+                        ),
+                      const SizedBox(width: 8),
+
+                      // 신고하기 버튼
+                      if (showReportButton)
+                        TextButton.icon(
+                          onPressed: () => _toggleReportApi(comment),
+                          icon: const Icon(Icons.report, size: 14, color: Colors.red),
+                          label: const Text('신고하기', style: TextStyle(fontSize: 12, color: Colors.red)),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                            minimumSize: const Size(0, 0),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-
-            // 내용
-            Padding(
-              padding: const EdgeInsets.only(left: 44),
-              child: Text(
-                displayText,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 14,
-                  fontStyle: (isDeleted || isBlockedByReport) ? FontStyle.italic : FontStyle.normal,
-                  fontWeight: isBlockedByReport ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // 답글/좋아요/삭제/신고 버튼 영역
-            Padding(
-              padding: const EdgeInsets.only(left: 44),
-              child: Row(
-                children: [
-                  // 답글 작성 버튼
-                  if (!isDeleted && !isBlockedByReport && comment.parentId == null)
-                    TextButton(
-                      onPressed: () => _setReplyingTo(comment),
-                      child: const Text('답글 작성', style: TextStyle(fontSize: 12, color: Colors.blue)),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-                        minimumSize: const Size(0, 0),
-                      ),
-                    ),
-
-                  if (!isDeleted && !isBlockedByReport && comment.parentId == null)
-                    const SizedBox(width: 8),
-
-                  // 답글 모드 해제 버튼
-                  if (isReplyingToThis)
-                    TextButton(
-                      onPressed: _cancelReplying,
-                      child: const Text('답글 취소', style: TextStyle(fontSize: 12, color: Colors.orange)),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-                        minimumSize: const Size(0, 0),
-                      ),
-                    ),
-
-                  // 좋아요 버튼
-                  if (showLikeButton)
-                    TextButton.icon(
-                      onPressed: () => _toggleLikeCommentApi(comment),
-                      icon: Icon(likeIcon, size: 14, color: likeColor), // ⭐ [수정] 아이콘 색상 고정
-                      label: Text(
-                          '${comment.likes}',
-                          style: const TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.normal)), // ⭐ [수정] 텍스트 스타일 고정
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                        minimumSize: const Size(0, 0),
-                      ),
-                    ),
-
-                  const Spacer(),
-
-                  // 댓글 삭제 버튼
-                  if (canDeleteComment)
-                    TextButton(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return AlertDialog(
-                              title: const Text("댓글 삭제"),
-                              content: const Text("이 댓글을 정말로 삭제하시겠습니까?"),
-                              actions: <Widget>[
-                                TextButton(child: const Text("취소"), onPressed: () => Navigator.of(context).pop()),
-                                TextButton(
-                                  child: const Text("삭제", style: TextStyle(color: Colors.red)),
-                                  onPressed: () {
-                                    Navigator.of(context).pop();
-                                    _deleteCommentApi(comment.id);
-                                  },
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
-                      child: const Text('삭제', style: TextStyle(fontSize: 12, color: Colors.red)),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-                        minimumSize: const Size(0, 0),
-                      ),
-                    ),
-                  const SizedBox(width: 8),
-
-                  // 신고하기 버튼
-                  if (showReportButton)
-                    TextButton.icon(
-                      onPressed: () => _toggleReportApi(comment),
-                      icon: const Icon(Icons.report, size: 14, color: Colors.red),
-                      label: const Text('신고하기', style: TextStyle(fontSize: 12, color: Colors.red)),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-                        minimumSize: const Size(0, 0),
-                      ),
-                    ),
-                  // ⭐ [수정 3] 이미 신고한 경우 표시하는 로직은 제거 (서버에서 상태를 받지 않으므로)
-                  /*
-                  if (comment.reported && !isDeleted && !isBlockedByReport)
-                    Text(
-                        '신고 완료',
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.red.shade700,
-                            fontWeight: FontWeight.bold
-                        )
-                    ),
-                  */
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
   @override
@@ -858,7 +980,26 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   Row(
                     children: [
                       Expanded(
-                        child: Text('작성자: ${widget.post.author}'),
+                        child: Row( // 작성자 정보 표시를 위한 Row 추가
+                          children: [
+                            const Text('작성자: ', style: TextStyle(fontSize: 14, color: Colors.black87)),
+                            Text(
+                              widget.post.author,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black),
+                            ),
+                            const SizedBox(width: 6),
+                            // ⭐ 프로필 아이콘 추가 (클릭 시 팝업 실행)
+                            GestureDetector(
+                              onTap: () => _showAuthorProfileDialog(context),
+                              child: Icon(
+                                Icons.account_circle,
+                                color: Colors.blue[700],
+                                size: 20,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       Row(
                         children: [

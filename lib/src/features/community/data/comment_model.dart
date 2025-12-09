@@ -79,6 +79,7 @@ class Comment {
     final int parsedLikes = json['likeCount'] as int? ?? 0;
     final int parsedReportedCount = json['reportedCount'] as int? ?? 0;
     final bool parsedReported = json['reported'] as bool? ?? false;
+    final String actualAuthorNickname = json['authorNickname'] as String? ?? '익명 사용자';
 
     return Comment(
       id: json['_id'] as String,
@@ -91,7 +92,7 @@ class Comment {
       updatedAt: DateTime.parse(json['updatedAt'] as String),
 
       // ⚠️ 닉네임은 userId를 이용해 임시 데이터로 처리
-      authorNickname: userId.length >= 4 ? '유저_${userId.substring(0, 4)}' : '시스템 유저',
+      authorNickname: actualAuthorNickname,
 
       // ⭐ [수정] 계산된 값 적용
       likes: parsedLikes,

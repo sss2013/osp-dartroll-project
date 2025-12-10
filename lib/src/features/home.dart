@@ -141,6 +141,14 @@ class _HomePageState extends State<HomePage> {
       }
     }
   }
+  //누르면 학교사이트 이동
+  Future<void> _launchKumohUrl() async {
+    const url = 'https://www.kumoh.ac.kr';
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
 
   Widget _searchButton() {
     return Padding(
@@ -173,6 +181,129 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  //광고 배너
+  Widget _buildAdBanner() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: GestureDetector(
+        onTap: _launchKumohUrl, //클릭하면 학교
+        child: Container(
+          height: 130,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF162B75), Color(0xFF4263EB)],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF162B75).withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -20,
+                top: -40,
+                child: CircleAvatar(
+                  radius: 80,
+                  backgroundColor: Colors.white.withOpacity(0.1),
+                ),
+              ),
+              Positioned(
+                right: 50,
+                bottom: -30,
+                child: CircleAvatar(
+                  radius: 50,
+                  backgroundColor: Colors.white.withOpacity(0.05),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              "미래를 이끄는 공학의 힘",
+                              style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            "금오공과대학교",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              height: 1.1,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            "Global Standard, KIT",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 5,
+                          )
+                        ],
+                      ),
+                      child: const Icon(Icons.school_rounded, color: Color(0xFF162B75), size: 32),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    "AD",
+                    style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context).size;
@@ -194,17 +325,9 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 24),
               _searchButton(),
               const SizedBox(height: 24),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Container(
-                  height: 120,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    gradient: LinearGradient(colors: [Colors.blue[100]!, Colors.blue[200]!]),
-                  ),
-                  child: const Center(child: Text("광고 배너 영역", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
-                ),
-              ),
+              
+              _buildAdBanner(),
+
               const SizedBox(height: 32),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16.0),
@@ -217,7 +340,6 @@ class _HomePageState extends State<HomePage> {
                   ...upcomingEvents.map((e) => Padding(padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8), child: _eventCardWidget(e))).toList()
                 else const Padding(padding: EdgeInsets.all(20.0), child: Center(child: Text("🎉 현재 예정된 공연/행사가 없습니다.", style: TextStyle(color: Colors.grey)))),
 
-              // ▼▼▼ 수정된 부분: 하단에 충분한 여백 추가 (네비게이션 바 높이 + 여유분) ▼▼▼
               const SizedBox(height: 100),
             ]),
           ),

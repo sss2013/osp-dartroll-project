@@ -55,6 +55,8 @@ dependencies:
   get_it: ^7.6.4
   flutter_map: ^8.2.2
 
+
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -72,6 +74,10 @@ dev_dependencies:
   # Testing
   bloc_test: ^9.1.5
   mocktail: ^1.0.1
+
+
+dependency_overrides:
+  analyzer: '6.4.1'
 
 flutter:
   uses-material-design: true

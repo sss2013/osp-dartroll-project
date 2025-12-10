@@ -35,7 +35,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<!-- Codemagic의 KAKAO_NATIVE_APP_KEY 환경 변수로 교체될 부분 -->
-				<string>kakao$(KAKAO_NATIVE_APP_KEY)</string>
+				<string>d8a04653cce480e97394d868eb83502a</string>
 			</array>
 		</dict>
 		<!-- 네이버 로그인용 설정 -->
@@ -45,7 +45,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<!-- Codemagic의 NAVER_URL_SCHEME 환경 변수로 교체될 부분 -->
-				<string>$(NAVER_URL_SCHEME)</string>
+				<string>d8a04653cce480e97394d868eb83502a</string>
 			</array>
 		</dict>
 	</array>
@@ -61,14 +61,14 @@
 
 	<!-- 카카오용 -->
 	<key>KAKAO_APP_KEY</key>
-	<string>$(KAKAO_NATIVE_APP_KEY)</string>
+	<string>d8a04653cce480e97394d868eb83502a</string>
 	<!-- 네이버용 -->
 	<key>NAVER_CONSUMER_KEY</key>
-	<string>$(NAVER_CONSUMER_KEY)</string>
+	<string>RdMhFpaVD7Wo8hOvdeAP</string>
 	<key>NAVER_CONSUMER_SECRET</key>
-	<string>$(NAVER_CONSUMER_SECRET)</string>
+	<string>JqfrUIYa8T</string>
 	<key>NAVER_APP_NAME</key>
-	<string>$(NAVER_APP_NAME)</string>
+	<string>컬쳐요</string>
 
 	<!-- 4. 네이버 로그인을 위한 네트워크 보안 설정 -->
 	<key>NSAppTransportSecurity</key>

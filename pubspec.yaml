@@ -9,9 +9,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  socket_io_client: ^2.0.3 # 최신 버전을 확인하고 추가
   
   url_launcher: ^6.3.0
-  
+  html_unescape: ^2.0.0
   http: ^1.2.1 # 최신 버전으로 명시
   flutter_dotenv: ^5.1.0
   kakao_flutter_sdk: ^1.9.7+3 # 전체 추가
@@ -32,6 +34,7 @@ dependencies:
   dio: ^5.3.2
   retrofit: ^4.0.3
   json_annotation: ^4.8.1
+
 
   # Storage
   shared_preferences: ^2.2.2
@@ -55,6 +58,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: "^0.13.1"
 
   # Code generation
   build_runner: ^2.4.7
@@ -79,3 +83,9 @@ flutter:
     - assets/images/icons/naver_icon.png
     - .env
 
+flutter_launcher_icons:
+  # 사용할 이미지 파일 경로 (1단계에서 저장한 경로)
+  image_path: "assets/images/icons/cultureyo_icon.jpg"
+
+  # 아이콘을 적용할 플랫폼 지정 (기본적으로 모두 true)
+  android: true

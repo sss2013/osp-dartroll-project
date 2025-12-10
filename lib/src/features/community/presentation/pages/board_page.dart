@@ -3,10 +3,9 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // 💡 [추가] Provider 사용을 위해 임포트
-import 'package:dio/dio.dart'; // 💡 [추가] DioException 처리를 위해 임포트
+import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
 
-// ⭐ [추가] PostService import
 import 'package:cultureyo/src/features/community/service/post_service.dart';
 import 'package:cultureyo/src/features/community/data/post_model.dart';
 
@@ -24,7 +23,6 @@ class BoardPage extends StatefulWidget {
 class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // 💡 [변경] PostService 인스턴스를 직접 생성하지 않고, Provider로 주입받을 변수로 선언
   late PostService _postService;
 
   String selectedRegion = '전체';
@@ -33,7 +31,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   final int postsPerPage = 5;
 
   final List<String> regions = [
-    '전체', '강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '지역 미정'
+    '전체', '강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '온라인'
   ];
 
   final List<String> genres = [
@@ -58,19 +56,13 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
         _fetchPosts();
       }
     });
-
-    // 🚨 [변경] _fetchPosts()를 initState에서 제거하고 didChangeDependencies()로 옮김
-    // _fetchPosts();
   }
 
-  // 💡 [추가] Service 인스턴스를 context를 통해 가져오는 메서드
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // context.read를 사용하여 Service 인스턴스를 가져옵니다.
     _postService = context.read<PostService>();
 
-    // 최초 목록 로드 실행 (initState의 역할을 대신)
     if (posts.isEmpty && !isLoading) {
       _fetchPosts();
     }
@@ -82,9 +74,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     super.dispose();
   }
 
-  // ⭐ [수정] _fetchPosts 함수: DioException 처리 구조 추가
   Future<void> _fetchPosts() async {
-    // 💡 _postService가 초기화되지 않았다면 바로 리턴 (안전 장치)
     if (!mounted || _postService == null) return;
 
     setState(() {
@@ -96,7 +86,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     log('🔍 [CALL_SERVICE] Fetching posts for category: $category', name: 'BOARD_PAGE');
 
     try {
-      // ⭐ PostService의 fetchPosts 함수 호출
+      // ⭐ 변경 예정: 서버 페이징 및 필터링 적용 시, _postService.fetchPosts(category, currentPage, selectedRegion, selectedGenre) 형태로 변경해야 합니다.
       final fetchedPosts = await _postService.fetchPosts(category);
 
       setState(() {
@@ -104,7 +94,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
         isLoading = false;
       });
 
-    } on DioException catch (e) { // 💡 [추가] DioException 처리
+    } on DioException catch (e) {
       log('🚨 [DIO_ERROR] Failed to fetch posts: ${e.message}', name: 'BOARD_PAGE');
       if(mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -129,7 +119,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   // ----------------------------------------------------
 
   List<Post> _filteredPosts(String category) {
-    // ... 로직 유지 ...
     final filtered = posts.where((post) {
       final regionMatch =
           selectedRegion == '전체' || post.region == selectedRegion;
@@ -138,7 +127,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
       return post.category == category && regionMatch && genreMatch;
     }).toList();
 
-    // 최신순 정렬 (date 기준)
     filtered.sort((a, b) => b.date.compareTo(a.date));
 
     final startIndex = (currentPage - 1) * postsPerPage;
@@ -162,7 +150,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   }
 
   Future<void> _selectRegion() async {
-    // ... 로직 유지 ...
     final region = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
@@ -185,7 +172,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   }
 
   Future<void> _selectGenre() async {
-    // ... 로직 유지 ...
     final genre = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
@@ -231,11 +217,10 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    // ... build 로직 유지 ...
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.lightBlue,
+        backgroundColor: Colors.blue[200],
         title: const Text(
           '게시판',
           style: TextStyle(
@@ -328,7 +313,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
           ),
           Expanded(
             child: Container(
-              color: Colors.grey[200],
+              color: Colors.blue[50],
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : TabBarView(
@@ -357,7 +342,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   }
 
   Widget _buildPostList(String category) {
-    // ... _buildPostList 로직 유지 ...
     final posts = _filteredPosts(category);
     final totalPages = (_getFilteredCount(category) / postsPerPage).ceil();
 
@@ -376,28 +360,51 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
 
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                totalPages,
-                    (i) {
-                  final page = i + 1;
-                  return TextButton(
-                    onPressed: () {
-                      setState(() {
-                        currentPage = page;
-                      });
+            child: Center( // 👈 중앙 정렬을 위해 Center 위젯 추가
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center, // Row 내부 중앙 정렬 (이 부분은 SingleChildScrollView 때문에 완벽히 작동하지 않으므로, 외부 Center가 중요합니다.)
+                  children: List.generate(
+                    totalPages,
+                        (i) {
+                      final page = i + 1;
+                      final isSelected = page == currentPage;
+
+                      return Container( // 디자인 적용을 위해 Container 사용
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        decoration: BoxDecoration(
+                          color: isSelected ? Colors.blue : Colors.white, // 선택된 페이지는 파란색, 나머지는 흰색
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSelected ? Colors.blue : Colors.white,
+                            width: 1,
+                          ),
+                        ),
+                        child: InkWell( // TextButton 대신 InkWell을 사용하여 영역 전체를 터치 가능하게 합니다.
+                          onTap: () {
+                            setState(() {
+                              currentPage = page;
+                            });
+                            // ⭐ 페이징을 서버로 전환하면 여기에 _fetchPosts()를 호출해야 합니다.
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            child: Text(
+                              '$page',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold, // 굵은 글자
+                                color: isSelected ? Colors.white : Colors.black, // 선택된 페이지는 흰색 글씨, 나머지는 검은색
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
                     },
-                    child: Text(
-                      '$page',
-                      style: TextStyle(
-                        fontWeight:
-                        page == currentPage ? FontWeight.bold : FontWeight.normal,
-                        color: page == currentPage ? Colors.blue : Colors.black,
-                      ),
-                    ),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
           );
@@ -407,7 +414,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
         return GestureDetector(
           onTap: () async {
             try {
-              // 1. ⭐ [수정] PostService의 increaseViewCount 함수 호출 (Dio/Provider 사용)
+              // 1. PostService의 increaseViewCount 함수 호출
               await _postService.increaseViewCount(post.id, post.category);
 
               // 2. 상세 페이지로 이동하며 복귀를 기다림 (await)
@@ -416,7 +423,8 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
                 MaterialPageRoute(builder: (_) => PostDetailPage(post: post)),
               );
 
-              // 3. 상세 페이지에서 돌아왔을 때 목록을 새로고침하여 조회수 갱신
+              // 3. ⭐ [수정된 핵심 로직] 상세 페이지에서 돌아왔을 때 목록을 새로고침하여
+              //    변경된 조회수, 좋아요, 댓글 상태를 반영합니다.
               _fetchPosts();
 
             } on DioException catch (e) {

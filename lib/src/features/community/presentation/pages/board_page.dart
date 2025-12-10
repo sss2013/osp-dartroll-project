@@ -232,7 +232,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
         centerTitle: true,
         elevation: 0,
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight ),
+          preferredSize: const Size.fromHeight(kToolbarHeight-8),
           child: Container(
             color: Colors.white,
             child: TabBar(

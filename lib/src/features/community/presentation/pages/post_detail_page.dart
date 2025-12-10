@@ -1175,7 +1175,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
                               if (result == true) {
                                 _showSnackbar(
-                                    '게시물이 수정되었습니다. 상세 정보 새로고침이 필요합니다.');
+                                    '게시물이 수정되었습니다. (상세 정보 새로고침 필요).');
                                 // TODO: 수정 완료 후 게시물 상세 정보 갱신 로직 추가 필요
                               }
                             },

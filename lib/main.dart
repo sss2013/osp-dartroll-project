@@ -14,12 +14,22 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:cultureyo/src/features/community/service/post_service.dart';
 import 'package:cultureyo/src/features/community/service/performance_service.dart';
 import 'package:cultureyo/src/features/community/service/comment_service.dart';
+import 'package:flutter/services.dart'; // SystemChrome 사용을 위해 필요
 
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
+  // 1. Flutter Engine 바인딩 초기화
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 앱 전체 화면 방향 세로로 고정
+  // runnApp()보다 먼저 실행되어야 앱 전체에 적용됩니다.
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,     // 세로 방향 (정방향)
+    DeviceOrientation.portraitDown,   // 세로 방향 (역방향)
+  ]);
+
   await initializeDateFormatting('ko_KR', null);
   await dotenv.load(fileName: '.env');
 

@@ -61,7 +61,7 @@ class _ChatPageState extends State<ChatPage> {
       appBar: AppBar(
         title: const Text(
           '채팅',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: Colors.blue[200],
         centerTitle: true,

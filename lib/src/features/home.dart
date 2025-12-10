@@ -264,7 +264,6 @@ class _HomePageState extends State<HomePage> {
                                 child: Text("🎉 현재 예정된 공연/행사가 없습니다.",
                                     style: TextStyle(color: Colors.grey)))),
 
-                  // ▼▼▼ 수정된 부분: 하단에 충분한 여백 추가 (네비게이션 바 높이 + 여유분) ▼▼▼
                   const SizedBox(height: 100),
                 ]),
           ),

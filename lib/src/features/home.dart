@@ -99,6 +99,7 @@ class _MainScreenState extends State<MainScreen> {
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
+
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -107,7 +108,7 @@ class _HomePageState extends State<HomePage> {
   List<Event> upcomingEvents = [];
   bool isLoading = false;
   String? loadError;
-  late final eventService = context.read<EventService>();
+  late final EventService eventService;
 
   final Color _primaryBlue = Colors.blue[200]!;
   final Color _lightBlueBg = Colors.blue[50]!;
@@ -125,8 +126,8 @@ class _HomePageState extends State<HomePage> {
     });
 
     try {
-      final allEvents =
-      await eventService.postGetEvents(area: "서울", genre: "전시");
+      eventService = context.read<EventService>();
+      final allEvents = await eventService.postGetEvents(area: "서울", genre: "전시");
       allEvents.shuffle();
       setState(() {
         upcomingEvents = allEvents.take(3).toList();
@@ -145,14 +146,21 @@ class _HomePageState extends State<HomePage> {
       }
     }
   }
+  //누르면 학교사이트 이동
+  Future<void> _launchKumohUrl() async {
+    const url = 'https://www.kumoh.ac.kr';
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
 
   Widget _searchButton() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: ElevatedButton(
         onPressed: () {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const RegionSelectPage()));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const RegionSelectPage()));
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: _primaryBlue,
@@ -178,21 +186,138 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  //광고 배너
+  Widget _buildAdBanner() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: GestureDetector(
+        onTap: _launchKumohUrl, //클릭하면 학교
+        child: Container(
+          height: 130,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF162B75), Color(0xFF4263EB)],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF162B75).withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -20,
+                top: -40,
+                child: CircleAvatar(
+                  radius: 80,
+                  backgroundColor: Colors.white.withOpacity(0.1),
+                ),
+              ),
+              Positioned(
+                right: 50,
+                bottom: -30,
+                child: CircleAvatar(
+                  radius: 50,
+                  backgroundColor: Colors.white.withOpacity(0.05),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              "미래를 이끄는 공학의 힘",
+                              style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            "금오공과대학교",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              height: 1.1,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            "Global Standard, KIT",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 5,
+                          )
+                        ],
+                      ),
+                      child: const Icon(Icons.school_rounded, color: Color(0xFF162B75), size: 32),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    "AD",
+                    style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery
-        .of(context)
-        .size;
+    final mq = MediaQuery.of(context).size;
     final cardMaxWidth = mq.width > 600 ? 600.0 : mq.width;
 
     return Scaffold(
       backgroundColor: _lightBlueBg,
       appBar: AppBar(
-        title: const Text("컬쳐요",
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-                color: Colors.white)),
+        title: const Text("컬쳐요", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white)),
         centerTitle: true,
         backgroundColor: _primaryBlue,
         elevation: 0,
@@ -201,71 +326,27 @@ class _HomePageState extends State<HomePage> {
         child: Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: cardMaxWidth),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 24),
-                  _searchButton(),
-                  const SizedBox(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Container(
-                      height: 120,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        gradient: LinearGradient(
-                            colors: [Colors.blue[100]!, Colors.blue[200]!]),
-                      ),
-                      child: const Center(
-                          child: Text("광고 배너 영역",
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold))),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Text("🔥 인기 이벤트",
-                        style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87)),
-                  ),
-                  const SizedBox(height: 16),
-                  if (isLoading)
-                    Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Center(
-                            child:
-                            CircularProgressIndicator(color: _primaryBlue)))
-                  else
-                    if (loadError != null)
-                      const Padding(
-                          padding: EdgeInsets.all(20.0),
-                          child: Center(
-                              child: Text("❌ 이벤트 로드 오류",
-                                  style: TextStyle(color: Colors.red))))
-                    else
-                      if (upcomingEvents.isNotEmpty)
-                        ...upcomingEvents
-                            .map((e) =>
-                            Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16.0, vertical: 8),
-                                child: _eventCardWidget(e)))
-                            .toList()
-                      else
-                        const Padding(
-                            padding: EdgeInsets.all(20.0),
-                            child: Center(
-                                child: Text("🎉 현재 예정된 공연/행사가 없습니다.",
-                                    style: TextStyle(color: Colors.grey)))),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              const SizedBox(height: 24),
+              _searchButton(),
+              const SizedBox(height: 24),
 
-                  const SizedBox(height: 100),
-                ]),
+              _buildAdBanner(),
+
+              const SizedBox(height: 32),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text("🔥 인기 이벤트", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+              ),
+              const SizedBox(height: 16),
+              if (isLoading) Padding(padding: const EdgeInsets.all(20.0), child: Center(child: CircularProgressIndicator(color: _primaryBlue)))
+              else if (loadError != null) const Padding(padding: EdgeInsets.all(20.0), child: Center(child: Text("❌ 이벤트 로드 오류", style: TextStyle(color: Colors.red))))
+              else if (upcomingEvents.isNotEmpty)
+                  ...upcomingEvents.map((e) => Padding(padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8), child: _eventCardWidget(e))).toList()
+                else const Padding(padding: EdgeInsets.all(20.0), child: Center(child: Text("🎉 현재 예정된 공연/행사가 없습니다.", style: TextStyle(color: Colors.grey)))),
+
+              const SizedBox(height: 100),
+            ]),
           ),
         ),
       ),
@@ -281,20 +362,15 @@ class _HomePageState extends State<HomePage> {
 
         EventDetail? detail;
         try {
-          detail = await eventService.postGetEventDetail(
-              contentId: contentId, idxName: idxName);
+          detail = await eventService.postGetEventDetail(contentId: contentId, idxName: idxName);
         } catch (err) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("상세 정보를 불러오지 못했습니다.")));
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("상세 정보를 불러오지 못했습니다.")));
           }
           return;
         }
         if (mounted) {
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => EventDetailPage(detail: detail!)));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailPage(detail: detail!)));
         }
       },
       child: Card(
@@ -316,49 +392,29 @@ class _HomePageState extends State<HomePage> {
                   width: 90,
                   height: 90,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
-                      Container(
-                        width: 90,
-                        height: 90,
-                        color: Colors.grey[200],
-                        child: Icon(Icons.image_not_supported,
-                            color: Colors.grey[400]),
-                      ),
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 90,
+                    height: 90,
+                    color: Colors.grey[200],
+                    child: Icon(Icons.image_not_supported, color: Colors.grey[400]),
+                  ),
                 )
                     : Container(
                   width: 90,
                   height: 90,
                   color: Colors.grey[200],
-                  child: Icon(Icons.image_not_supported,
-                      color: Colors.grey[400]),
+                  child: Icon(Icons.image_not_supported, color: Colors.grey[400]),
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(e.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87)),
-                      const SizedBox(height: 8),
-                      Text(e.place,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Colors.grey[600])),
-                      const SizedBox(height: 4),
-                      Text("${e.startDate} ~ ${e.endDate}",
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              color: Colors.blue[300],
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500)),
-                    ]),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(e.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  const SizedBox(height: 8),
+                  Text(e.place, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey[600])),
+                  const SizedBox(height: 4),
+                  Text("${e.startDate} ~ ${e.endDate}", maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.blue[300], fontSize: 12, fontWeight: FontWeight.w500)),
+                ]),
               ),
             ],
           ),

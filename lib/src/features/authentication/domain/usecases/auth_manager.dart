@@ -146,18 +146,18 @@ class AuthManager extends ChangeNotifier {
     }
   }
 
-  Future<bool> _refreshAny() async {
-    final refreshToken = await secureStorage.read(key: 'server_refresh_token');
-    if (refreshToken == null) return false;
-
-    final refreshed =
-        await kakaoService.refreshToken() ?? await naverService.refreshToken();
-    if (refreshed != null) {
-      await _saveServerTokens(refreshed);
-      return true;
-    }
-    return false;
-  }
+  // Future<bool> _refreshAny() async {
+  //   final refreshToken = await secureStorage.read(key: 'server_refresh_token');
+  //   if (refreshToken == null) return false;
+  //
+  //   final refreshed =
+  //       await kakaoService.refreshToken() ?? await naverService.refreshToken();
+  //   if (refreshed != null) {
+  //     await _saveServerTokens(refreshed);
+  //     return true;
+  //   }
+  //   return false;
+  // }
 
   Future<bool> signInWithKakao() async {
     final auth = await kakaoService.login();

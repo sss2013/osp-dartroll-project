@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:cultureyo/src/features/authentication/domain/usecases/auth_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_naver_login/flutter_naver_login.dart';
@@ -8,8 +6,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_naver_login/interface/types/naver_login_status.dart';
 import 'package:cultureyo/src/features/authentication/domain/entities/auth_data.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter_web_auth/flutter_web_auth.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
@@ -61,6 +57,7 @@ class NaverLoginService implements AuthService {
         return null;
       }
     }
+    return null;
   }
 
   @override

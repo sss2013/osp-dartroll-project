@@ -1,6 +1,5 @@
 import 'package:cultureyo/src/features/authentication/domain/usecases/auth_manager.dart';
 import 'package:cultureyo/src/features/profile/usecases/name_input_page.dart';
-import 'package:cultureyo/src/features/profile/usecases/user_info.dart';
 import 'package:cultureyo/src/features/home.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';

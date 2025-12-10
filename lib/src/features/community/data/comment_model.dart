@@ -1,7 +1,3 @@
-// lib/src/features/community/data/comment_model.dart
-
-import 'dart:convert';
-
 // 💡 서버 응답 필드에 맞춘 댓글 모델
 class Comment {
   final String id; // DB의 _id

@@ -11,7 +11,6 @@ import 'package:cultureyo/src/features/community/data/post_model.dart';
 
 import 'post_detail_page.dart';
 import 'post_write_page.dart';
-import '../../../home.dart';
 
 class BoardPage extends StatefulWidget {
   const BoardPage({super.key});

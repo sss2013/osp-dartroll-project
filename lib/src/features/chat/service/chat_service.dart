@@ -8,6 +8,40 @@ class ChatService {
 
   ChatService({required this.dioClient});
 
+  Future<List<ChatRoom>> findMyRoom() async {
+    final dio = dioClient.dio;
+    try {
+      final response = await dio.get(
+        '/api/chat/',
+      );
+      if (response.data is List) {
+        return (response.data as List)
+            .map((json) => ChatRoom.fromJson(json))
+            .toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        print('Failed to fetch chat rooms: $e');
+      }
+      rethrow;
+    }
+  }
+  Future<List<Message>> getMessages(String roomId) async {
+    final dio = dioClient.dio;
+    try {
+      final response = await dio.get('/api/chat/$roomId/messages');
+      if (response.data is List) {
+        return (response.data as List)
+            .map((json) => Message.fromJson(json))
+            .toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      if (kDebugMode) print('Failed to fetch messages for room $roomId: $e');
+      rethrow;
+    }
+  }
   Future<void> createRoom(String otherName) async {
     final dio = dioClient.dio;
 
@@ -27,28 +61,15 @@ class ChatService {
     }
   }
 
-  // Future<List<ChatRoom>> findMyRoom() async {
-  //   final dio = dioClient.dio;
-  //   try {
-  //     final chatRooms = await dio.get(
-  //       '/api/chat/',
-  //     );
-  //     return
-  //   } on DioException catch (e) {
-  //     if (kDebugMode) {
-  //       print('Failed to fetch chat rooms: $e');
-  //     }
-  //     rethrow;
-  //   }
-  // }
+
   Future<void> sendMessage(String roomId, String text) async {
     final dio = dioClient.dio;
     try {
       await dio.post(
-        '/api/chat/message', // 서버 API 엔드포인트
+        '/api/chat/saveMessage', // 서버 API 엔드포인트
         data: {
           'roomId': roomId,
-          'text': text,
+          'content': text,
         },
       );
     } on DioException catch (e) {

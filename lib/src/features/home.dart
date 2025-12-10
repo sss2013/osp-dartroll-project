@@ -1,3 +1,4 @@
+import 'package:cultureyo/src/features/chat/service/chat_service.dart';
 import 'package:cultureyo/src/features/event/data/event_detail.dart';
 import 'package:cultureyo/src/features/event/service/event_service.dart';
 import 'package:flutter/material.dart';
@@ -19,10 +20,11 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
+
   final List<Widget> _pages = [
-    HomePage(),
-    BoardPage(),
-    ChatPage(),
+    const HomePage(),
+    const BoardPage(),
+    const ChatPage(),
     MyInfoPage(),
   ];
 

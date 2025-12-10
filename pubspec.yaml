@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  socket_io_client: ^2.0.3 # 최신 버전을 확인하고 추가
   
   url_launcher: ^6.3.0
   html_unescape: ^2.0.0
@@ -28,6 +30,7 @@ dependencies:
   dio: ^5.3.2
   retrofit: ^4.0.3
   json_annotation: ^4.8.1
+
 
   # Storage
   shared_preferences: ^2.2.2

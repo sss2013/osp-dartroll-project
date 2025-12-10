@@ -10,7 +10,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
-
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:cultureyo/src/features/community/service/post_service.dart';
 import 'package:cultureyo/src/features/community/service/performance_service.dart';
 import 'package:cultureyo/src/features/community/service/comment_service.dart';
@@ -18,8 +18,9 @@ import 'package:cultureyo/src/features/community/service/comment_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-Future<void> main() async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('ko_KR', null);
   await dotenv.load(fileName: '.env');
 
   final kakaoKey = dotenv.env['KAKAO_NATIVE_APP_KEY'];
@@ -40,7 +41,6 @@ Future<void> main() async {
   final commentService = CommentService(dioClient: dioClient);
   final chatService = ChatService(dioClient: dioClient);
   final eventService = EventService(dioClient: dioClient);
-
 
   runApp(
       MultiProvider(providers: [

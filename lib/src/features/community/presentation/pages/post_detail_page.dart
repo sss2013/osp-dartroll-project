@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
+import 'package:cultureyo/src/features/chat/service/chat_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
@@ -643,8 +644,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
                 // 1:1 채팅하기 버튼
                 ElevatedButton.icon(
                   onPressed: () {
-                    // TODO: 1:1 채팅하기 기능 구현
-                    _showSnackbar('$authorNickname님에게 1:1 채팅을 신청했습니다. (기능 미구현)');
+                    final chatService = context.read<ChatService>();
+                    chatService.createRoom(authorNickname);
+                    _showSnackbar('$authorNickname님에게 1:1 채팅을 신청했습니다. ');
                     Navigator.of(context).pop();
                   },
                   icon: const Icon(Icons.chat_bubble_outline, size: 20),

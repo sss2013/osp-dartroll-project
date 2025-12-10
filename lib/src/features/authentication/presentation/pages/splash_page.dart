@@ -1,4 +1,5 @@
 import 'package:cultureyo/src/features/authentication/domain/usecases/auth_manager.dart';
+import 'package:cultureyo/src/features/chat/service/chat_service.dart';
 import 'package:cultureyo/src/features/profile/usecases/name_input_page.dart';
 import 'package:cultureyo/src/features/home.dart';
 import 'package:flutter/foundation.dart';

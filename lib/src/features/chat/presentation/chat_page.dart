@@ -26,6 +26,12 @@ class _ChatPageState extends State<ChatPage> {
     _loadChatRooms();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+  }
+
+
   void _loadChatRooms() {
     setState(() {
       _chatRoomsFuture = _chatService.findMyRoom();
@@ -34,7 +40,6 @@ class _ChatPageState extends State<ChatPage> {
 
   String _formatDateTime(DateTime? date) {
     if (date == null) return '';
-
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -51,16 +56,16 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // [ChatPage] 배경색
+      backgroundColor: Colors.blue[50],
       appBar: AppBar(
         title: const Text(
           '채팅',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.lightBlue,
-        centerTitle: false,
-        actions: [
-          // 검색 버튼은 FutureBuilder 안으로 이동하여 데이터 로드 후 활성화
-        ],
+        backgroundColor: Colors.blue[200],
+        centerTitle: true,
+        actions: const [],
       ),
       body: FutureBuilder<List<ChatRoom>>(
         future: _chatRoomsFuture,
@@ -76,39 +81,53 @@ class _ChatPageState extends State<ChatPage> {
           }
 
           final chatRooms = snapshot.data!;
-
           return ListView.builder(
             itemCount: chatRooms.length,
             itemBuilder: (context, index) {
               final room = chatRooms[index];
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Colors.lightBlue,
-                  child: Text(
-                    room.title.isNotEmpty ? room.title[0] : '?',
-                    style: const TextStyle(color: Colors.white),
+              return Padding(
+                // 항목 간 수직 간격 줄임
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+                // 카드 형식 적용
+                child: Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  color: Colors.white,
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.lightBlue,
+                      child: Text(
+                        room.title.isNotEmpty ? room.title[0] : '?',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    title: Text(
+                      room.title,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      room.lastMessageText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: Text(
+                      _formatDateTime(room.lastMessageTime),
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatRoomPage(chatRoom: room),
+                        ),
+                      );
+                      // 채팅방에서 돌아왔을 때 목록을 새로고침
+                      _loadChatRooms();
+                    },
                   ),
                 ),
-                title: Text(room.title),
-                subtitle: Text(
-                  room.lastMessageText,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: Text(
-                  _formatDateTime(room.lastMessageTime),
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-                onTap: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ChatRoomPage(chatRoom: room),
-                    ),
-                  );
-                  // 채팅방에서 돌아왔을 때 목록을 새로고침
-                  _loadChatRooms();
-                },
               );
             },
           );
@@ -186,17 +205,17 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       _socket.emit('joinRoom',currentRoom.id);
     });
 
-  _socket.on('receiveMessage', (data) {
-    final message = Message.fromJson(data);
-    if (message.sender != _myUsername) {
-      if (mounted) {
-        setState(() {
-        currentRoom.messages.add(message);
-      });
+    _socket.on('receiveMessage', (data) {
+      final message = Message.fromJson(data);
+      if (message.sender != _myUsername) {
+        if (mounted) {
+          setState(() {
+            currentRoom.messages.add(message);
+          });
+        }
+        _scrollToBottom(animated: true);
       }
-      _scrollToBottom(animated: true);
-  }
-  });
+    });
 
     _socket.onDisconnect((_) {
       if( kDebugMode) {
@@ -251,9 +270,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     _socket.emit('sendMessage', messageData);
 
     final tempMessage = Message(
-      sender: _myUsername,
-      text: text,
-      time: DateTime.now()
+        sender: _myUsername,
+        text: text,
+        time: DateTime.now()
     );
 
     // 낙관적 UI 업데이트
@@ -292,9 +311,17 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         return true;
       },
       child: Scaffold(
+        // [ChatRoomPage] 배경색
+        backgroundColor: Colors.blue[50],
         appBar: AppBar(
-          title: Text(currentRoom.title),
-          backgroundColor: Colors.lightBlue,
+          backgroundColor: Colors.blue[200],
+          title: Text(
+            currentRoom.title,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          iconTheme: const IconThemeData(
+            color: Colors.white,
+          ),
         ),
         body: Column(
           children: [
@@ -302,115 +329,157 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               child: _isLoadingMessages
                   ? const Center(child: CircularProgressIndicator())
                   : ListView.builder(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.all(12),
-                      itemCount: currentRoom.messages.length,
-                      itemBuilder: (context, index) {
-                        final msg = currentRoom.messages[index];
-                        final isMe = msg.sender == _myUsername;
+                controller: _scrollController,
+                padding: const EdgeInsets.all(12),
+                itemCount: currentRoom.messages.length,
+                itemBuilder: (context, index) {
+                  final msg = currentRoom.messages[index];
+                  final isMe = msg.sender == _myUsername;
 
-                        bool showProfile = true;
-                        if (index > 0) {
-                          final prev = currentRoom.messages[index - 1];
-                          if (prev.sender == msg.sender) {
-                            showProfile = false;
-                          }
-                        }
+                  bool showProfile = true;
+                  if (index > 0) {
+                    final prev = currentRoom.messages[index - 1];
+                    if (prev.sender == msg.sender) {
+                      showProfile = false;
+                    }
+                  }
 
-                        return Container(
-                          margin: const EdgeInsets.symmetric(vertical: 6),
-                          child: Row(
+                  return Container(
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      mainAxisAlignment: isMe
+                          ? MainAxisAlignment.end
+                          : MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (!isMe)
+                          Visibility(
+                            visible: showProfile,
+                            maintainSize: true,
+                            maintainAnimation: true,
+                            maintainState: true,
+                            child: CircleAvatar(
+                              radius: 18,
+                              // 상대방 프로필 배경색 흰색
+                              backgroundColor: Colors.white,
+                              child: Text(msg.sender.isNotEmpty
+                                  ? msg.sender[0]
+                                  : '?'),
+                            ),
+                          ),
+                        const SizedBox(width: 8),
+
+                        // 메시지 버블 및 시간 영역
+                        Flexible(
+                          child: Row( // 시간과 버블을 좌우로 배치
                             mainAxisAlignment: isMe
                                 ? MainAxisAlignment.end
                                 : MainAxisAlignment.start,
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              if (!isMe)
-                                Visibility(
-                                  visible: showProfile,
-                                  maintainSize: true,
-                                  maintainAnimation: true,
-                                  maintainState: true,
-                                  child: CircleAvatar(
-                                    radius: 18,
-                                    backgroundColor: Colors.grey.shade300,
-                                    child: Text(msg.sender.isNotEmpty
-                                        ? msg.sender[0]
-                                        : '?'),
+
+                              // 내 메시지 시간
+                              if (isMe)
+                                Padding(
+                                  padding:
+                                  const EdgeInsets.only(right: 4),
+                                  child: Text(
+                                    _formatMessageTime(msg.time),
+                                    style: const TextStyle(
+                                        color: Colors.grey, fontSize: 10),
                                   ),
                                 ),
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    if (isMe)
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets.only(right: 4),
-                                        child: Text(
-                                          _formatMessageTime(msg.time),
-                                          style: const TextStyle(
-                                              color: Colors.grey, fontSize: 10),
-                                        ),
-                                      ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 10, horizontal: 14),
-                                      decoration: BoxDecoration(
-                                        color: isMe
-                                            ? Colors.lightBlue
-                                            : Colors.grey.shade200,
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      child: Text(
-                                        msg.text,
-                                        style: TextStyle(
-                                            color: isMe
-                                                ? Colors.white
-                                                : Colors.black87),
-                                      ),
-                                    ),
-                                    if (!isMe)
-                                      Padding(
-                                        padding: const EdgeInsets.only(left: 4),
-                                        child: Text(
-                                          _formatMessageTime(msg.time),
-                                          style: const TextStyle(
-                                              color: Colors.grey, fontSize: 10),
-                                        ),
-                                      ),
-                                  ],
+
+                              // 메시지 버블 Container
+                              Flexible( // 줄 바꿈 및 최대 너비 제한
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 10, horizontal: 14),
+                                  decoration: BoxDecoration(
+                                    // 내 채팅/상대방 채팅 모두 흰색 배경
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Text(
+                                    msg.text,
+                                    style: const TextStyle(
+                                      // 내 채팅/상대방 채팅 모두 검정색 글자
+                                        color: Colors.black87),
+                                  ),
                                 ),
                               ),
+
+                              // 상대방 메시지 시간
+                              if (!isMe)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 4),
+                                  child: Text(
+                                    _formatMessageTime(msg.time),
+                                    style: const TextStyle(
+                                        color: Colors.grey, fontSize: 10),
+                                  ),
+                                ),
                             ],
                           ),
-                        );
-                      },
+                        ),
+                      ],
                     ),
+                  );
+                },
+              ),
             ),
             SafeArea(
+              // 🌟 🌟 🌟 [수정 부분]: 댓글 입력창 디자인 통일
               child: Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                color: Colors.white,
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                // 1. Container 배경색: 게시판과 동일하게 Colors.blue[200]
+                color: Colors.blue[200],
                 child: Row(
                   children: [
                     Expanded(
                       child: TextField(
                         controller: _textController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: "메시지를 입력하세요...",
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                          // 2. TextField 스타일: 둥근 테두리 및 흰색 채우기
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                         ),
                         onSubmitted: (_) => _sendMessage(),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.send, color: Colors.lightBlue),
-                      onPressed: _sendMessage,
+                    const SizedBox(width: 8),
+                    // 3. 전송 버튼: 게시판 디자인과 유사하게 흰색 배경의 동그란 버튼
+                    GestureDetector(
+                      onTap: _sendMessage,
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.3),
+                              spreadRadius: 1,
+                              blurRadius: 3,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.send,
+                          color: Colors.lightBlue,
+                          size: 24,
+                        ),
+                      ),
                     ),
                   ],
                 ),

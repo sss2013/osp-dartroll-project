@@ -128,7 +128,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
   List<Comment> _sortCommentsByHierarchy(List<Comment> allComments) {
     final List<Comment> sortedList = [];
     final List<Comment> topLevelComments =
-        allComments.where((c) => c.parentId == null).toList();
+    allComments.where((c) => c.parentId == null).toList();
     topLevelComments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
     final Map<String, List<Comment>> repliesMap = {};
@@ -163,7 +163,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     try {
       // 서버에서 댓글 목록을 가져옵니다.
       final fetchedComments =
-          await _commentService.fetchComments(widget.post.id);
+      await _commentService.fetchComments(widget.post.id);
 
       if (mounted) {
         setState(() {
@@ -559,7 +559,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
     final url = widget.post.performanceUrl!;
     final displayTitle = (widget.post.performanceTitle != null &&
-            widget.post.performanceTitle!.isNotEmpty)
+        widget.post.performanceTitle!.isNotEmpty)
         ? widget.post.performanceTitle!
         : '이 공연에 대해 더 알고싶다면?';
 
@@ -632,7 +632,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           backgroundColor: Colors.white,
           contentPadding: EdgeInsets.zero,
           content: Container(
@@ -665,7 +665,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       child: const CircleAvatar(
                         radius: 45,
                         child:
-                            Icon(Icons.person, size: 45, color: Colors.white),
+                        Icon(Icons.person, size: 45, color: Colors.white),
                       ),
                     ),
                   ],
@@ -690,7 +690,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     try {
                       final chatService = context.read<ChatService>();
                       final ChatRoom room =
-                          await chatService.createRoom(authorNickname);
+                      await chatService.createRoom(authorNickname);
 
                       if (mounted) {
                         Navigator.push(
@@ -709,7 +709,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   icon: const Icon(Icons.chat_bubble_outline, size: 20),
                   label: const Text('1:1 채팅하기',
                       style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
                     backgroundColor: Colors.blue[200],
@@ -779,7 +779,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     final bool showLikeButton = !isDeleted && !isBlockedByReport;
 
     const IconData likeIcon = Icons.thumb_up_outlined;
-    const Color likeColor = Colors.blue;
+    // const Color likeColor = Colors.blue; // 사용되지 않는 변수
 
     // 신고하기 버튼 표시 여부: 삭제/차단되지 않은 댓글 && 내 댓글이 아닐 때
     final bool showReportButton =
@@ -986,7 +986,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                           },
                           child: const Text('삭제',
                               style:
-                                  TextStyle(fontSize: 12, color: Colors.red)),
+                              TextStyle(fontSize: 12, color: Colors.red)),
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 0, vertical: 0),
@@ -1003,7 +1003,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                               size: 14, color: Colors.red),
                           label: const Text('신고하기',
                               style:
-                                  TextStyle(fontSize: 12, color: Colors.red)),
+                              TextStyle(fontSize: 12, color: Colors.red)),
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 0, vertical: 0),
@@ -1026,6 +1026,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
     // 게시물 신고 누적 3회 이상 여부
     final bool isPostBlocked = _postReportedCount >= 3;
 
+    // 현재 접속한 사용자가 게시글 작성자인지 확인
+    final bool isPostAuthor = _currentUserId != null && _currentUserId == widget.post.authorId;
+
     if (_isUserIdLoading) {
       return const Scaffold(
         backgroundColor: Colors.white,
@@ -1036,6 +1039,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.blue[200],
@@ -1104,8 +1108,14 @@ class _PostDetailPageState extends State<PostDetailPage> {
                             // 🌟 [수정] 프로필 아이콘 추가 (클릭 시 통합 함수 호출)
                             GestureDetector(
                               onTap: () {
-                                _showUserProfileDialog(
-                                    context, widget.post.author);
+                                // 게시글 작성자 프로필 팝업 방지 로직 추가
+                                if (isPostAuthor) {
+                                  _showSnackbar('본인의 프로필은 마이페이지에서 확인해 주세요.',
+                                      duration: const Duration(seconds: 1));
+                                } else {
+                                  _showUserProfileDialog(
+                                      context, widget.post.author);
+                                }
                               },
                               child: Icon(
                                 Icons.account_circle,
@@ -1136,7 +1146,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       Text(
                         '${widget.post.date.year}.${widget.post.date.month.toString().padLeft(2, '0')}.${widget.post.date.day.toString().padLeft(2, '0')}',
                         style:
-                            const TextStyle(fontSize: 12, color: Colors.grey),
+                        const TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -1208,7 +1218,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                       TextButton(
                                         child: const Text("삭제",
                                             style:
-                                                TextStyle(color: Colors.red)),
+                                            TextStyle(color: Colors.red)),
                                         onPressed: () {
                                           Navigator.of(context).pop();
                                           _deletePostApi();
@@ -1314,8 +1324,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
                             isPostBlocked
                                 ? '이 게시물은 차단 상태입니다. '
                                 : (_isPostReported
-                                    ? '이미 신고한 게시글입니다. (누적 신고: $_postReportedCount)'
-                                    : ''),
+                                ? '이미 신고한 게시글입니다. (누적 신고: $_postReportedCount)'
+                                : ''),
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.red.shade700,
@@ -1389,47 +1399,49 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
                   const Text('댓글',
                       style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                      TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                   const SizedBox(height: 12),
 
                   _isLoadingComments
                       ? const Center(child: CircularProgressIndicator())
                       : _comments.isEmpty
-                          ? Center(
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 24.0),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Text(
-                                      '작성된 댓글이 없습니다.',
-                                      style: TextStyle(
-                                          fontSize: 16, color: Colors.grey),
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      '첫 댓글을 남겨보세요!',
-                                      style: TextStyle(
-                                          fontSize: 14, color: Colors.blueGrey),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                          : ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: _comments.length,
-                              itemBuilder: (context, index) =>
-                                  _buildCommentItem(_comments[index]),
-                            ),
+                      ? Center(
+                    child: Padding(
+                      padding:
+                      const EdgeInsets.symmetric(vertical: 24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Text(
+                            '작성된 댓글이 없습니다.',
+                            style: TextStyle(
+                                fontSize: 16, color: Colors.grey),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            '첫 댓글을 남겨보세요!',
+                            style: TextStyle(
+                                fontSize: 14, color: Colors.blueGrey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                      : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _comments.length,
+                    itemBuilder: (context, index) =>
+                        _buildCommentItem(_comments[index]),
+                  ),
                   const SizedBox(height: 80),
                 ],
               ),
             ),
           ),
-          Container(
+          SafeArea(
+          top: false,
+          child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             color: Colors.blue[200],
             child: Row(
@@ -1443,8 +1455,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       hintText: _isUserIdLoading
                           ? '사용자 정보를 불러오는 중...'
                           : (_currentUserId == 'guest_unauth'
-                              ? '로그인 상태를 확인할 수 없습니다.'
-                              : _commentHintText),
+                          ? '로그인 상태를 확인할 수 없습니다.'
+                          : _commentHintText),
                       hintStyle: TextStyle(
                           color: _currentUserId == 'guest_unauth'
                               ? Colors.red
@@ -1463,8 +1475,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
                 const SizedBox(width: 8),
                 GestureDetector(
                   onTap: (_currentUserId == null ||
-                          _isUserIdLoading ||
-                          _currentUserId == 'guest_unauth')
+                      _isUserIdLoading ||
+                      _currentUserId == 'guest_unauth')
                       ? null
                       : _submitCommentApi,
                   child: Container(
@@ -1472,8 +1484,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     height: 48,
                     decoration: BoxDecoration(
                       color: (_currentUserId == null ||
-                              _isUserIdLoading ||
-                              _currentUserId == 'guest_unauth')
+                          _isUserIdLoading ||
+                          _currentUserId == 'guest_unauth')
                           ? Colors.grey
                           : Colors.white,
                       shape: BoxShape.circle,
@@ -1489,8 +1501,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     child: Icon(
                       Icons.send,
                       color: (_currentUserId == null ||
-                              _isUserIdLoading ||
-                              _currentUserId == 'guest_unauth')
+                          _isUserIdLoading ||
+                          _currentUserId == 'guest_unauth')
                           ? Colors.white
                           : Colors.lightBlue,
                       size: 24,
@@ -1499,6 +1511,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                 ),
               ],
             ),
+          ),
           ),
         ],
       ),

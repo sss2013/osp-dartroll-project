@@ -5,6 +5,7 @@ import 'package:cultureyo/src/features/home.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum Auth { naver, kakao }
 
@@ -37,6 +38,8 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushAndRemoveUntil(context,
             MaterialPageRoute(builder: (_) => MainScreen()), (route) => false);
       } else {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isFirstChatDone', false);
         Navigator.pushReplacement(
             context, MaterialPageRoute(builder: (_) => const NameInputPage()));
       }

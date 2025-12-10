@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
+import 'package:cultureyo/src/features/chat/data/chat_model.dart';
+import 'package:cultureyo/src/features/chat/presentation/chat_page.dart';
 import 'package:cultureyo/src/features/chat/service/chat_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -23,6 +25,7 @@ class PostDetailPage extends StatefulWidget {
 
 class _PostDetailPageState extends State<PostDetailPage> {
   late int likes;
+
   // 게시물 신고 상태는 로컬에서 관리 (서버 응답으로 업데이트)
   bool _isPostReported = false;
   late int _postReportedCount;
@@ -102,7 +105,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
     _fetchComments();
   }
 
-
   void _setReplyingTo(Comment parentComment) {
     if (!mounted) return;
     setState(() {
@@ -110,7 +112,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
       _commentHintText = '${parentComment.authorNickname}님에게 답글을 입력하세요...';
       _commentFocusNode.requestFocus();
     });
-    _showSnackbar('답글 모드로 전환되었습니다.', duration: const Duration(milliseconds: 1000));
+    _showSnackbar('답글 모드로 전환되었습니다.',
+        duration: const Duration(milliseconds: 1000));
   }
 
   void _cancelReplying() {
@@ -124,9 +127,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
   List<Comment> _sortCommentsByHierarchy(List<Comment> allComments) {
     final List<Comment> sortedList = [];
-    final List<Comment> topLevelComments = allComments
-        .where((c) => c.parentId == null)
-        .toList();
+    final List<Comment> topLevelComments =
+        allComments.where((c) => c.parentId == null).toList();
     topLevelComments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
     final Map<String, List<Comment>> repliesMap = {};
@@ -160,7 +162,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
     try {
       // 서버에서 댓글 목록을 가져옵니다.
-      final fetchedComments = await _commentService.fetchComments(widget.post.id);
+      final fetchedComments =
+          await _commentService.fetchComments(widget.post.id);
 
       if (mounted) {
         setState(() {
@@ -171,7 +174,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
     } on DioException catch (e) {
       log('🚨 [FETCH_ERROR] DioException: ${e.message}', name: 'COMMENT_FETCH');
       if (mounted) {
-        final errorMessage = e.response?.data['message']?.toString() ?? '네트워크 오류';
+        final errorMessage =
+            e.response?.data['message']?.toString() ?? '네트워크 오류';
         _showSnackbar('댓글 로딩 중 오류 발생: $errorMessage');
         setState(() => _isLoadingComments = false);
       }
@@ -192,7 +196,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
     final String? parentId = _replyingToCommentId;
 
     if (commentText.isEmpty) {
-      _showSnackbar('내용을 입력해주세요.',duration: const Duration(milliseconds: 1000));
+      _showSnackbar('내용을 입력해주세요.',
+          duration: const Duration(milliseconds: 1000));
       return;
     }
 
@@ -205,18 +210,23 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
       if (mounted) {
         if (success) {
-          _showSnackbar(parentId != null ? '답글이 성공적으로 작성되었습니다.' : '댓글이 성공적으로 작성되었습니다.',duration: const Duration(milliseconds: 1000));
+          _showSnackbar(
+              parentId != null ? '답글이 성공적으로 작성되었습니다.' : '댓글이 성공적으로 작성되었습니다.',
+              duration: const Duration(milliseconds: 1000));
           _commentController.clear();
           _cancelReplying();
           _fetchComments(); // 새로고침
         } else {
-          _showSnackbar(parentId != null ? '답글 작성 실패 (서버 오류)' : '댓글 작성 실패 (서버 오류)');
+          _showSnackbar(
+              parentId != null ? '답글 작성 실패 (서버 오류)' : '댓글 작성 실패 (서버 오류)');
         }
       }
     } on DioException catch (e) {
-      log('🚨 [SUBMIT_ERROR] DioException: ${e.message}', name: 'COMMENT_SUBMIT');
+      log('🚨 [SUBMIT_ERROR] DioException: ${e.message}',
+          name: 'COMMENT_SUBMIT');
       if (mounted) {
-        final errorMessage = e.response?.data['message']?.toString() ?? '네트워크 오류';
+        final errorMessage =
+            e.response?.data['message']?.toString() ?? '네트워크 오류';
         _showSnackbar('작성 중 오류 발생: $errorMessage');
       }
     } catch (e) {
@@ -226,8 +236,11 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
   // 게시물 좋아요 토글 API 호출
   Future<void> _toggleLikeApi() async {
-    if (_currentUserId == null || _isUserIdLoading || _currentUserId == 'guest_unauth') {
-      _showSnackbar('로그인된 사용자만 추천할 수 있습니다.', duration: const Duration(seconds: 2));
+    if (_currentUserId == null ||
+        _isUserIdLoading ||
+        _currentUserId == 'guest_unauth') {
+      _showSnackbar('로그인된 사용자만 추천할 수 있습니다.',
+          duration: const Duration(seconds: 2));
       return;
     }
 
@@ -235,7 +248,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
       final String postId = widget.post.id;
       final String category = widget.post.category;
 
-      log('▶️ [POST_LIKE_TOGGLE_INIT] Post ID: $postId, Category: $category', name: 'UI_ACTION_LIKE');
+      log('▶️ [POST_LIKE_TOGGLE_INIT] Post ID: $postId, Category: $category',
+          name: 'UI_ACTION_LIKE');
 
       final int newLikesCount = await _postService.toggleLike(
         postId,
@@ -247,13 +261,15 @@ class _PostDetailPageState extends State<PostDetailPage> {
           likes = newLikesCount;
         });
 
-        _showSnackbar('게시물 추천 정보가 업데이트되었습니다. (새로고침 필요)', duration: const Duration(seconds: 1));
+        _showSnackbar('게시물 추천 정보가 업데이트되었습니다. (새로고침 필요)',
+            duration: const Duration(seconds: 1));
       }
-
     } on DioException catch (e) {
-      log('🚨 [LIKE_TOGGLE_ERROR] DioException: ${e.message}', name: 'POST_LIKE');
+      log('🚨 [LIKE_TOGGLE_ERROR] DioException: ${e.message}',
+          name: 'POST_LIKE');
       if (mounted) {
-        final errorMessage = e.response?.data['message']?.toString() ?? '네트워크 오류';
+        final errorMessage =
+            e.response?.data['message']?.toString() ?? '네트워크 오류';
         _showSnackbar('추천 처리 중 오류 발생: $errorMessage');
       }
     } catch (e) {
@@ -264,8 +280,11 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
   // 게시물 신고 로직
   Future<void> _toggleReportPostApi() async {
-    if (_currentUserId == null || _isUserIdLoading || _currentUserId == 'guest_unauth') {
-      _showSnackbar('로그인된 사용자만 게시글을 신고할 수 있습니다.', duration: const Duration(seconds: 2));
+    if (_currentUserId == null ||
+        _isUserIdLoading ||
+        _currentUserId == 'guest_unauth') {
+      _showSnackbar('로그인된 사용자만 게시글을 신고할 수 있습니다.',
+          duration: const Duration(seconds: 2));
       return;
     }
 
@@ -275,7 +294,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
         widget.post.category,
       );
 
-      log('✅ [POST_REPORT_SUCCESS] API Response reported: ${result.reported}, count: ${result.reportedCount}', name: 'POST_REPORT');
+      log('✅ [POST_REPORT_SUCCESS] API Response reported: ${result.reported}, count: ${result.reportedCount}',
+          name: 'POST_REPORT');
 
       if (mounted) {
         setState(() {
@@ -294,13 +314,15 @@ class _PostDetailPageState extends State<PostDetailPage> {
           message = '이미 신고한 게시글입니다.';
         }
 
-        _showSnackbar('$message (누적 신고: ${_postReportedCount}회)', duration: const Duration(seconds: 2));
+        _showSnackbar('$message (누적 신고: ${_postReportedCount}회)',
+            duration: const Duration(seconds: 2));
       }
-
     } on DioException catch (e) {
-      log('🚨 [POST_REPORT_ERROR] DioException: ${e.message}', name: 'POST_REPORT');
+      log('🚨 [POST_REPORT_ERROR] DioException: ${e.message}',
+          name: 'POST_REPORT');
       if (mounted) {
-        final errorMessage = e.response?.data['message']?.toString() ?? '네트워크 오류';
+        final errorMessage =
+            e.response?.data['message']?.toString() ?? '네트워크 오류';
         _showSnackbar('게시글 신고 처리 중 오류 발생: $errorMessage');
       }
     } catch (e) {
@@ -310,7 +332,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
   }
 
   // 댓글 좋아요 상태를 로컬에서 업데이트하는 헬퍼 함수
-  void _updateCommentLikeStatus(String commentId, int newLikesCount, bool isLiked) {
+  void _updateCommentLikeStatus(
+      String commentId, int newLikesCount, bool isLiked) {
     final int index = _comments.indexWhere((c) => c.id == commentId);
     if (index != -1) {
       final oldComment = _comments[index];
@@ -328,9 +351,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
-
   // 댓글 신고 상태를 로컬에서 업데이트하는 헬퍼 함수
-  void _updateCommentReportStatus(String commentId, int newReportedCount, bool isReported) {
+  void _updateCommentReportStatus(
+      String commentId, int newReportedCount, bool isReported) {
     final int index = _comments.indexWhere((c) => c.id == commentId);
     if (index != -1) {
       final oldComment = _comments[index];
@@ -346,21 +369,23 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
-
   // 댓글 좋아요 토글 API 호출 및 UI 처리
   Future<void> _toggleLikeCommentApi(Comment comment) async {
     // 1. 권한 확인 (로그인 필요)
-    if (_currentUserId == null || _isUserIdLoading || _currentUserId == 'guest_unauth') {
-      _showSnackbar('로그인된 사용자만 댓글을 추천할 수 있습니다.', duration: const Duration(seconds: 2));
+    if (_currentUserId == null ||
+        _isUserIdLoading ||
+        _currentUserId == 'guest_unauth') {
+      _showSnackbar('로그인된 사용자만 댓글을 추천할 수 있습니다.',
+          duration: const Duration(seconds: 2));
       return;
     }
 
     // 2. 작성자 본인의 댓글은 좋아요 불가능
     if (_currentUserId == comment.userId) {
-      _showSnackbar('본인이 작성한 댓글에는 좋아요를 누를 수 없습니다.', duration: const Duration(seconds: 2));
+      _showSnackbar('본인이 작성한 댓글에는 좋아요를 누를 수 없습니다.',
+          duration: const Duration(seconds: 2));
       return;
     }
-
 
     try {
       final result = await _commentService.toggleCommentLike(comment.id);
@@ -371,13 +396,15 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
         // 2. 스낵바 메시지 출력
         final String action = result.liked ? '좋아요' : '좋아요 취소';
-        _showSnackbar('댓글에 $action 처리되었습니다. (현재 ${result.likeCount}개)', duration: const Duration(seconds: 1));
+        _showSnackbar('댓글에 $action 처리되었습니다. (현재 ${result.likeCount}개)',
+            duration: const Duration(seconds: 1));
       }
-
     } on DioException catch (e) {
-      log('🚨 [COMMENT_LIKE_ERROR] DioException: ${e.message}', name: 'COMMENT_LIKE');
+      log('🚨 [COMMENT_LIKE_ERROR] DioException: ${e.message}',
+          name: 'COMMENT_LIKE');
       if (mounted) {
-        final errorMessage = e.response?.data['message']?.toString() ?? '네트워크 오류';
+        final errorMessage =
+            e.response?.data['message']?.toString() ?? '네트워크 오류';
         _showSnackbar('댓글 좋아요 처리 중 오류 발생: $errorMessage');
       }
     } catch (e) {
@@ -386,11 +413,13 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
-
   // 댓글 신고 API 호출 및 UI 처리
   Future<void> _toggleReportApi(Comment comment) async {
-    if (_currentUserId == null || _isUserIdLoading || _currentUserId == 'guest_unauth') {
-      _showSnackbar('로그인된 사용자만 신고할 수 있습니다.', duration: const Duration(seconds: 2));
+    if (_currentUserId == null ||
+        _isUserIdLoading ||
+        _currentUserId == 'guest_unauth') {
+      _showSnackbar('로그인된 사용자만 신고할 수 있습니다.',
+          duration: const Duration(seconds: 2));
       return;
     }
 
@@ -398,8 +427,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
       final result = await _commentService.toggleCommentReport(comment.id);
 
       if (mounted) {
-
-        _updateCommentReportStatus(comment.id, result.reportedCount, result.reported);
+        _updateCommentReportStatus(
+            comment.id, result.reportedCount, result.reported);
 
         String message;
         if (result.reported) {
@@ -414,11 +443,12 @@ class _PostDetailPageState extends State<PostDetailPage> {
         }
         _showSnackbar(message, duration: const Duration(seconds: 2));
       }
-
     } on DioException catch (e) {
-      log('🚨 [REPORT_ERROR] DioException: ${e.message}', name: 'COMMENT_REPORT');
+      log('🚨 [REPORT_ERROR] DioException: ${e.message}',
+          name: 'COMMENT_REPORT');
       if (mounted) {
-        final errorMessage = e.response?.data['message']?.toString() ?? '네트워크 오류';
+        final errorMessage =
+            e.response?.data['message']?.toString() ?? '네트워크 오류';
         _showSnackbar('신고 처리 중 오류 발생: $errorMessage');
       }
     } catch (e) {
@@ -426,7 +456,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
       _showSnackbar('신고 처리 중 예상치 못한 오류 발생');
     }
   }
-
 
   Future<void> _deletePostApi() async {
     if (_currentUserId == null) {
@@ -451,7 +480,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
     } on DioException catch (e) {
       log('🚨 [DELETE_ERROR] DioException: ${e.message}', name: 'POST_DELETE');
       if (mounted) {
-        final errorMessage = e.response?.data['message']?.toString() ?? '네트워크 오류';
+        final errorMessage =
+            e.response?.data['message']?.toString() ?? '네트워크 오류';
         _showSnackbar('게시물 삭제 중 오류 발생: $errorMessage');
       }
     } catch (e) {
@@ -465,7 +495,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
       return;
     }
 
-    log('▶️ [DELETE_COMMENT_INIT] Comment ID: $commentId, User ID: $_currentUserId', name: 'UI_ACTION_DELETE');
+    log('▶️ [DELETE_COMMENT_INIT] Comment ID: $commentId, User ID: $_currentUserId',
+        name: 'UI_ACTION_DELETE');
     try {
       final success = await _commentService.deleteComment(commentId);
 
@@ -478,9 +509,11 @@ class _PostDetailPageState extends State<PostDetailPage> {
         }
       }
     } on DioException catch (e) {
-      log('🚨 [DELETE_ERROR] DioException: ${e.message}', name: 'COMMENT_DELETE');
+      log('🚨 [DELETE_ERROR] DioException: ${e.message}',
+          name: 'COMMENT_DELETE');
       if (mounted) {
-        final errorMessage = e.response?.data['message']?.toString() ?? '네트워크 오류';
+        final errorMessage =
+            e.response?.data['message']?.toString() ?? '네트워크 오류';
         _showSnackbar('댓글 삭제 중 오류 발생: $errorMessage');
       }
     } catch (e) {
@@ -488,7 +521,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
-  void _showSnackbar(String message, {Duration duration = const Duration(seconds: 4)}) {
+  void _showSnackbar(String message,
+      {Duration duration = const Duration(seconds: 4)}) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -518,12 +552,14 @@ class _PostDetailPageState extends State<PostDetailPage> {
   }
 
   Widget _buildPerformanceCard(BuildContext context) {
-    if (widget.post.performanceUrl == null || widget.post.performanceUrl!.isEmpty) {
+    if (widget.post.performanceUrl == null ||
+        widget.post.performanceUrl!.isEmpty) {
       return const SizedBox.shrink();
     }
 
     final url = widget.post.performanceUrl!;
-    final displayTitle = (widget.post.performanceTitle != null && widget.post.performanceTitle!.isNotEmpty)
+    final displayTitle = (widget.post.performanceTitle != null &&
+            widget.post.performanceTitle!.isNotEmpty)
         ? widget.post.performanceTitle!
         : '이 공연에 대해 더 알고싶다면?';
 
@@ -593,9 +629,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
   void _showUserProfileDialog(BuildContext context, String authorNickname) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           backgroundColor: Colors.white,
           contentPadding: EdgeInsets.zero,
           content: Container(
@@ -608,7 +645,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
                 Text(
                   '$authorNickname님의 프로필',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Colors.black87),
                 ),
                 const SizedBox(height: 20),
 
@@ -619,11 +659,13 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.lightBlue.withOpacity(0.2), width: 2),
+                        border: Border.all(
+                            color: Colors.lightBlue.withOpacity(0.2), width: 2),
                       ),
                       child: const CircleAvatar(
                         radius: 45,
-                        child: Icon(Icons.person, size: 45, color: Colors.white),
+                        child:
+                            Icon(Icons.person, size: 45, color: Colors.white),
                       ),
                     ),
                   ],
@@ -643,14 +685,31 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
                 // 1:1 채팅하기 버튼
                 ElevatedButton.icon(
-                  onPressed: () {
-                    final chatService = context.read<ChatService>();
-                    chatService.createRoom(authorNickname);
-                    _showSnackbar('$authorNickname님에게 1:1 채팅을 신청했습니다. ');
-                    Navigator.of(context).pop();
+                  onPressed: () async {
+                    Navigator.of(dialogContext).pop();
+                    try {
+                      final chatService = context.read<ChatService>();
+                      final ChatRoom room =
+                          await chatService.createRoom(authorNickname);
+
+                      if (mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatRoomPage(chatRoom: room),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        _showSnackbar('채팅방을 여는 중 오류가 발생했습니다: $e');
+                      }
+                    }
                   },
                   icon: const Icon(Icons.chat_bubble_outline, size: 20),
-                  label: const Text('1:1 채팅하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  label: const Text('1:1 채팅하기',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
                     backgroundColor: Colors.blue[200],
@@ -666,7 +725,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                 // 닫기 버튼
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.of(context).pop();
+                    Navigator.of(dialogContext).pop();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[200],
@@ -695,7 +754,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
     );
   }
 
-
   // 댓글 아이템 빌드 함수
   Widget _buildCommentItem(Comment comment) {
     final bool isDeleted = comment.isDeleted;
@@ -703,16 +761,18 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
     final String displayText = isDeleted
         ? '삭제된 댓글입니다.'
-        : (isBlockedByReport
-        ? '관리자에 의해 차단된 댓글입니다.'
-        : comment.text);
+        : (isBlockedByReport ? '관리자에 의해 차단된 댓글입니다.' : comment.text);
 
-    final Color textColor = isDeleted ? Colors.grey : (isBlockedByReport ? Colors.red.shade400 : Colors.black);
+    final Color textColor = isDeleted
+        ? Colors.grey
+        : (isBlockedByReport ? Colors.red.shade400 : Colors.black);
 
     final double leftPadding = comment.parentId != null ? 36.0 : 0.0;
     final bool isReplyingToThis = _replyingToCommentId == comment.id;
 
-    final bool isMyComment = !isDeleted && _currentUserId != null && comment.userId == _currentUserId;
+    final bool isMyComment = !isDeleted &&
+        _currentUserId != null &&
+        comment.userId == _currentUserId;
     final bool canDeleteComment = isMyComment;
 
     // 좋아요 버튼 표시 여부: 삭제/차단되지 않은 댓글
@@ -722,8 +782,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
     const Color likeColor = Colors.blue;
 
     // 신고하기 버튼 표시 여부: 삭제/차단되지 않은 댓글 && 내 댓글이 아닐 때
-    final bool showReportButton = !isDeleted && !isBlockedByReport && !isMyComment;
-
+    final bool showReportButton =
+        !isDeleted && !isBlockedByReport && !isMyComment;
 
     return Column(
       children: [
@@ -733,7 +793,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: isReplyingToThis ? Colors.yellow[50] : Colors.white,
-              border: Border.all(color: isReplyingToThis ? Colors.orange : Colors.grey[300]!),
+              border: Border.all(
+                  color: isReplyingToThis ? Colors.orange : Colors.grey[300]!),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
@@ -754,9 +815,11 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         // 삭제/차단되지 않은 댓글이 아니며 본인 댓글도 아닐 때만 프로필 다이얼로그 표시
                         if (!isDeleted && !isBlockedByReport && !isMyComment) {
                           // 🌟 [수정] 통합 함수 호출 시 댓글 작성자 닉네임 전달
-                          _showUserProfileDialog(context, comment.authorNickname);
+                          _showUserProfileDialog(
+                              context, comment.authorNickname);
                         } else if (isMyComment) {
-                          _showSnackbar('본인의 프로필은 마이페이지에서 확인해 주세요.', duration: const Duration(seconds: 1));
+                          _showSnackbar('본인의 프로필은 마이페이지에서 확인해 주세요.',
+                              duration: const Duration(seconds: 1));
                         }
                       },
                       child: Row(
@@ -802,8 +865,12 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       style: TextStyle(
                         color: textColor,
                         fontSize: 14,
-                        fontStyle: (isDeleted || isBlockedByReport) ? FontStyle.italic : FontStyle.normal,
-                        fontWeight: isBlockedByReport ? FontWeight.bold : FontWeight.normal,
+                        fontStyle: (isDeleted || isBlockedByReport)
+                            ? FontStyle.italic
+                            : FontStyle.normal,
+                        fontWeight: isBlockedByReport
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                       ),
                     ),
                   ),
@@ -816,34 +883,47 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   child: Row(
                     children: [
                       // 답글 작성 버튼
-                      if (!isDeleted && !isBlockedByReport && comment.parentId == null)
+                      if (!isDeleted &&
+                          !isBlockedByReport &&
+                          comment.parentId == null)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.blue[200], // blue[200] 배경색
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: TextButton(
                             onPressed: () => _setReplyingTo(comment),
-                            child: const Text('답글 작성', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)), // 흰색 텍스트
+                            child: const Text('답글 작성',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600)), // 흰색 텍스트
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 0, vertical: 0),
                               minimumSize: const Size(0, 0),
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                           ),
                         ),
 
-                      if (!isDeleted && !isBlockedByReport && comment.parentId == null)
+                      if (!isDeleted &&
+                          !isBlockedByReport &&
+                          comment.parentId == null)
                         const SizedBox(width: 8),
 
                       // 답글 모드 해제 버튼
                       if (isReplyingToThis)
                         TextButton(
                           onPressed: _cancelReplying,
-                          child: const Text('답글 취소', style: TextStyle(fontSize: 12, color: Colors.orange)),
+                          child: const Text('답글 취소',
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.orange)),
                           style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 0, vertical: 0),
                             minimumSize: const Size(0, 0),
                           ),
                         ),
@@ -851,24 +931,27 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       // 좋아요 버튼 디자인
                       if (showLikeButton)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.blue[200], // blue[200] 배경색 적용
                             borderRadius: BorderRadius.circular(8), // 둥근 모서리
                           ),
                           child: TextButton.icon(
                             onPressed: () => _toggleLikeCommentApi(comment),
-                            icon: const Icon(likeIcon, size: 14, color: Colors.white), // 아이콘 색상 흰색
-                            label: Text(
-                                '${comment.likes}',
+                            icon: const Icon(likeIcon,
+                                size: 14, color: Colors.white), // 아이콘 색상 흰색
+                            label: Text('${comment.likes}',
                                 style: const TextStyle(
                                     fontSize: 12,
                                     color: Colors.white, // 텍스트 색상 흰색
                                     fontWeight: FontWeight.normal)),
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 0, vertical: 0),
                               minimumSize: const Size(0, 0),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap, // 버튼 클릭 영역 최소화
+                              tapTargetSize: MaterialTapTargetSize
+                                  .shrinkWrap, // 버튼 클릭 영역 최소화
                             ),
                           ),
                         ),
@@ -884,9 +967,13 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                   title: const Text("댓글 삭제"),
                                   content: const Text("이 댓글을 정말로 삭제하시겠습니까?"),
                                   actions: <Widget>[
-                                    TextButton(child: const Text("취소"), onPressed: () => Navigator.of(context).pop()),
                                     TextButton(
-                                      child: const Text("삭제", style: TextStyle(color: Colors.red)),
+                                        child: const Text("취소"),
+                                        onPressed: () =>
+                                            Navigator.of(context).pop()),
+                                    TextButton(
+                                      child: const Text("삭제",
+                                          style: TextStyle(color: Colors.red)),
                                       onPressed: () {
                                         Navigator.of(context).pop();
                                         _deleteCommentApi(comment.id);
@@ -897,9 +984,12 @@ class _PostDetailPageState extends State<PostDetailPage> {
                               },
                             );
                           },
-                          child: const Text('삭제', style: TextStyle(fontSize: 12, color: Colors.red)),
+                          child: const Text('삭제',
+                              style:
+                                  TextStyle(fontSize: 12, color: Colors.red)),
                           style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 0, vertical: 0),
                             minimumSize: const Size(0, 0),
                           ),
                         ),
@@ -909,10 +999,14 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       if (showReportButton)
                         TextButton.icon(
                           onPressed: () => _toggleReportApi(comment),
-                          icon: const Icon(Icons.report, size: 14, color: Colors.red),
-                          label: const Text('신고하기', style: TextStyle(fontSize: 12, color: Colors.red)),
+                          icon: const Icon(Icons.report,
+                              size: 14, color: Colors.red),
+                          label: const Text('신고하기',
+                              style:
+                                  TextStyle(fontSize: 12, color: Colors.red)),
                           style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 0, vertical: 0),
                             minimumSize: const Size(0, 0),
                           ),
                         ),
@@ -926,6 +1020,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
       ],
     );
   }
+
   @override
   Widget build(BuildContext context) {
     // 게시물 신고 누적 3회 이상 여부
@@ -969,7 +1064,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   Wrap(
                     spacing: 4,
                     children: [
@@ -993,19 +1087,25 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   Row(
                     children: [
                       Expanded(
-                        child: Row( // 작성자 정보 표시를 위한 Row 추가
+                        child: Row(
+                          // 작성자 정보 표시를 위한 Row 추가
                           children: [
-                            const Text('작성자: ', style: TextStyle(fontSize: 14, color: Colors.black87)),
+                            const Text('작성자: ',
+                                style: TextStyle(
+                                    fontSize: 14, color: Colors.black87)),
                             Text(
                               widget.post.author,
                               style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: Colors.black),
                             ),
                             const SizedBox(width: 6),
                             // 🌟 [수정] 프로필 아이콘 추가 (클릭 시 통합 함수 호출)
                             GestureDetector(
                               onTap: () {
-                                _showUserProfileDialog(context, widget.post.author);
+                                _showUserProfileDialog(
+                                    context, widget.post.author);
                               },
                               child: Icon(
                                 Icons.account_circle,
@@ -1035,12 +1135,12 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       const SizedBox(width: 12),
                       Text(
                         '${widget.post.date.year}.${widget.post.date.month.toString().padLeft(2, '0')}.${widget.post.date.day.toString().padLeft(2, '0')}',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        style:
+                            const TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     ],
                   ),
                   const Divider(height: 20),
-
 
                   // 게시물 수정/삭제 버튼 (작성자일 경우)
                   if (_isAuthor)
@@ -1049,10 +1149,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-
                           GestureDetector(
                             onTap: () async {
-                              log('▶️ [POST_EDIT_BUTTON] 게시물 수정 버튼 클릭됨', name: 'UI_ACTION');
+                              log('▶️ [POST_EDIT_BUTTON] 게시물 수정 버튼 클릭됨',
+                                  name: 'UI_ACTION');
 
                               final bool? result = await Navigator.push<bool>(
                                 context,
@@ -1064,12 +1164,14 @@ class _PostDetailPageState extends State<PostDetailPage> {
                               );
 
                               if (result == true) {
-                                _showSnackbar('게시물이 수정되었습니다. 상세 정보 새로고침이 필요합니다.');
+                                _showSnackbar(
+                                    '게시물이 수정되었습니다. 상세 정보 새로고침이 필요합니다.');
                                 // TODO: 수정 완료 후 게시물 상세 정보 갱신 로직 추가 필요
                               }
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
                                 color: Colors.blue[100],
                                 borderRadius: BorderRadius.circular(24),
@@ -1077,19 +1179,19 @@ class _PostDetailPageState extends State<PostDetailPage> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.edit, size: 20, color: Colors.blue[700]),
+                                  Icon(Icons.edit,
+                                      size: 20, color: Colors.blue[700]),
                                   const SizedBox(width: 6),
                                   const Text(
                                     '게시물 수정',
-                                    style: TextStyle(fontSize: 14, color: Colors.blue),
+                                    style: TextStyle(
+                                        fontSize: 14, color: Colors.blue),
                                   ),
                                 ],
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
-
-
                           GestureDetector(
                             onTap: () {
                               showDialog(
@@ -1099,9 +1201,14 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                     title: const Text("게시글 삭제"),
                                     content: const Text("정말로 이 게시글을 삭제하시겠습니까?"),
                                     actions: <Widget>[
-                                      TextButton(child: const Text("취소"), onPressed: () => Navigator.of(context).pop()),
                                       TextButton(
-                                        child: const Text("삭제", style: TextStyle(color: Colors.red)),
+                                          child: const Text("취소"),
+                                          onPressed: () =>
+                                              Navigator.of(context).pop()),
+                                      TextButton(
+                                        child: const Text("삭제",
+                                            style:
+                                                TextStyle(color: Colors.red)),
                                         onPressed: () {
                                           Navigator.of(context).pop();
                                           _deletePostApi();
@@ -1113,7 +1220,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
                               );
                             },
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
                                 color: Colors.red[100],
                                 borderRadius: BorderRadius.circular(24),
@@ -1121,11 +1229,13 @@ class _PostDetailPageState extends State<PostDetailPage> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.delete_forever, size: 20, color: Colors.red[700]),
+                                  Icon(Icons.delete_forever,
+                                      size: 20, color: Colors.red[700]),
                                   const SizedBox(width: 6),
                                   const Text(
                                     '게시물 삭제',
-                                    style: TextStyle(fontSize: 14, color: Colors.red),
+                                    style: TextStyle(
+                                        fontSize: 14, color: Colors.red),
                                   ),
                                 ],
                               ),
@@ -1142,12 +1252,16 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       child: Center(
                         child: Text(
                           '관리자에 의해 차단된 글입니다.',
-                          style: TextStyle(fontSize: 16, color: Colors.red.shade500, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.red.shade500,
+                              fontWeight: FontWeight.bold),
                         ),
                       ),
                     )
                   else
-                    Text(widget.post.content, style: const TextStyle(fontSize: 16)),
+                    Text(widget.post.content,
+                        style: const TextStyle(fontSize: 16)),
 
                   // 공연 카드 (차단되지 않았을 때만 표시)
                   _buildPerformanceCard(context),
@@ -1164,7 +1278,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
                           GestureDetector(
                             onTap: _toggleReportPostApi,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
                                 color: Colors.red[100],
                                 borderRadius: BorderRadius.circular(24),
@@ -1172,11 +1287,13 @@ class _PostDetailPageState extends State<PostDetailPage> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.report, size: 20, color: Colors.red[700]),
+                                  Icon(Icons.report,
+                                      size: 20, color: Colors.red[700]),
                                   const SizedBox(width: 6),
                                   const Text(
                                     '신고하기',
-                                    style: TextStyle(fontSize: 14, color: Colors.red),
+                                    style: TextStyle(
+                                        fontSize: 14, color: Colors.red),
                                   ),
                                 ],
                               ),
@@ -1196,7 +1313,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
                           Text(
                             isPostBlocked
                                 ? '이 게시물은 차단 상태입니다. '
-                                : (_isPostReported ? '이미 신고한 게시글입니다. (누적 신고: $_postReportedCount)' : ''),
+                                : (_isPostReported
+                                    ? '이미 신고한 게시글입니다. (누적 신고: $_postReportedCount)'
+                                    : ''),
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.red.shade700,
@@ -1207,12 +1326,12 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       ),
                     ),
 
-
                   Center(
                     child: GestureDetector(
                       onTap: _toggleLikeApi,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.blue[100],
                           borderRadius: BorderRadius.circular(24),
@@ -1242,66 +1361,74 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
                   const Divider(height: 20),
 
-
                   if (_replyingToCommentId != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8.0),
                       child: Row(
                         children: [
-                          const Icon(Icons.reply, size: 18, color: Colors.orange),
+                          const Icon(Icons.reply,
+                              size: 18, color: Colors.orange),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               _commentHintText.replaceAll('입력하세요...', '작성 중'),
-                              style: const TextStyle(color: Colors.orange, fontSize: 14),
+                              style: const TextStyle(
+                                  color: Colors.orange, fontSize: 14),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           TextButton(
                             onPressed: _cancelReplying,
-                            child: const Text('취소', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            child: const Text('취소',
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.grey)),
                           ),
                         ],
                       ),
                     ),
 
-                  const Text('댓글', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  const Text('댓글',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                   const SizedBox(height: 12),
 
                   _isLoadingComments
                       ? const Center(child: CircularProgressIndicator())
                       : _comments.isEmpty
-                      ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Text(
-                            '작성된 댓글이 없습니다.',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            '첫 댓글을 남겨보세요!',
-                            style: TextStyle(fontSize: 14, color: Colors.blueGrey),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                      : ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _comments.length,
-                    itemBuilder: (context, index) => _buildCommentItem(_comments[index]),
-                  ),
+                          ? Center(
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 24.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: const [
+                                    Text(
+                                      '작성된 댓글이 없습니다.',
+                                      style: TextStyle(
+                                          fontSize: 16, color: Colors.grey),
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      '첫 댓글을 남겨보세요!',
+                                      style: TextStyle(
+                                          fontSize: 14, color: Colors.blueGrey),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: _comments.length,
+                              itemBuilder: (context, index) =>
+                                  _buildCommentItem(_comments[index]),
+                            ),
                   const SizedBox(height: 80),
                 ],
               ),
             ),
           ),
-
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             color: Colors.blue[200],
@@ -1315,27 +1442,40 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     decoration: InputDecoration(
                       hintText: _isUserIdLoading
                           ? '사용자 정보를 불러오는 중...'
-                          : (_currentUserId == 'guest_unauth' ? '로그인 상태를 확인할 수 없습니다.' : _commentHintText),
-                      hintStyle: TextStyle(color: _currentUserId == 'guest_unauth' ? Colors.red : Colors.grey[500]),
+                          : (_currentUserId == 'guest_unauth'
+                              ? '로그인 상태를 확인할 수 없습니다.'
+                              : _commentHintText),
+                      hintStyle: TextStyle(
+                          color: _currentUserId == 'guest_unauth'
+                              ? Colors.red
+                              : Colors.grey[500]),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: BorderSide.none,
                       ),
                       filled: true,
                       fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-
                 GestureDetector(
-                  onTap: (_currentUserId == null || _isUserIdLoading || _currentUserId == 'guest_unauth') ? null : _submitCommentApi,
+                  onTap: (_currentUserId == null ||
+                          _isUserIdLoading ||
+                          _currentUserId == 'guest_unauth')
+                      ? null
+                      : _submitCommentApi,
                   child: Container(
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: (_currentUserId == null || _isUserIdLoading || _currentUserId == 'guest_unauth') ? Colors.grey : Colors.white,
+                      color: (_currentUserId == null ||
+                              _isUserIdLoading ||
+                              _currentUserId == 'guest_unauth')
+                          ? Colors.grey
+                          : Colors.white,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
@@ -1348,7 +1488,11 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     ),
                     child: Icon(
                       Icons.send,
-                      color: (_currentUserId == null || _isUserIdLoading || _currentUserId == 'guest_unauth') ? Colors.white : Colors.lightBlue,
+                      color: (_currentUserId == null ||
+                              _isUserIdLoading ||
+                              _currentUserId == 'guest_unauth')
+                          ? Colors.white
+                          : Colors.lightBlue,
                       size: 24,
                     ),
                   ),

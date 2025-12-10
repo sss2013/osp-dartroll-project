@@ -1,5 +1,6 @@
 import 'package:cultureyo/src/features/chat/data/chat_model.dart';
 import 'package:cultureyo/src/features/chat/service/chat_service.dart';
+import 'package:cultureyo/src/features/profile/domain/user_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -131,7 +132,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   late ChatRoom currentRoom;
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _textController = TextEditingController();
-  late final ChatService _chatService;
+  late ChatService _chatService;
+  late UserService _userService;
   late IO.Socket _socket;
   bool _isLoadingMessages = true;
   String _myUsername='';
@@ -141,15 +143,31 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     super.initState();
     currentRoom = widget.chatRoom;
     _chatService = context.read<ChatService>();
+    _userService = context.read<UserService>();
+    _initializeChat();
+  }
 
-    final participants = currentRoom.participants.map((p) => p.name).toList();
-    _myUsername = participants.firstWhere(
-          (name) => !currentRoom.title.contains(name),
-      orElse: () => '나', // 만약 못찾으면 기본값
-    );
-
-    _fetchMessages();
+  Future<void > _initializeChat() async {
+    await _loadUserName();
     _initSocket();
+    await _fetchMessages();
+  }
+
+  Future<void> _loadUserName() async {
+    try {
+      final username = await _userService.loadUserName();
+      if (mounted) {
+        setState(() {
+          _myUsername = username['name'];
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('사용자 정보를 불러오는데 실패했습니다: $e')),
+        );
+      }
+    }
   }
 
   void _initSocket() {

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DioClient {
   final FlutterSecureStorage _storage;
@@ -84,12 +85,12 @@ class DioClient {
               } catch (refreshError) {
                 _isRefreshing = false;
                 _clearFailedRequests(refreshError);
-                await _notifyAuthFailure();
+                await notifyAuthFailure();
                 return handler.next(e);
               }
             } else {
               _isRefreshing = false;
-              await _notifyAuthFailure();
+              await notifyAuthFailure();
             }
           }
           return handler.next(e);
@@ -126,7 +127,10 @@ class DioClient {
     _failedRequests = [];
   }
 
-  Future<void> _notifyAuthFailure() async {
+  Future<void> notifyAuthFailure() async {
+    final prefs= await SharedPreferences.getInstance();
+    await prefs.clear();
+
     await _storage.deleteAll();
     _authFailedController.add(null);
   }

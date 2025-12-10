@@ -167,4 +167,10 @@ class AuthManager extends ChangeNotifier {
     final bool isComplete = pref.getBool('isProfileComplete') ?? false;
     return isComplete;
   }
+
+  Future<bool> checkFirstChat() async {
+    final pref= await SharedPreferences.getInstance();
+    final bool isFirstChatDone = pref.getBool('isFirstChatDone') ?? false;
+    return isFirstChatDone;
+  }
 }

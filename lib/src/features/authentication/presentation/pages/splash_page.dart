@@ -37,6 +37,7 @@ class _SplashPageState extends State<SplashPage> {
 
     if (status != AuthStatus.none) {
       final inputComplete = await authManager.checkInput();
+
       if (!mounted) return;
       if(kDebugMode) { print ('Input Complete: $inputComplete'); }
       if (inputComplete) {

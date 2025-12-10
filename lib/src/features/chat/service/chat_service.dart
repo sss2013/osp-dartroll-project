@@ -1,12 +1,16 @@
 import 'package:cultureyo/src/core/network/dio_client.dart';
 import 'package:cultureyo/src/features/chat/data/chat_model.dart';
+import 'package:cultureyo/src/features/profile/domain/user_service.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart';
 
 class ChatService {
   final DioClient dioClient;
+  final UserService _userService;
 
-  ChatService({required this.dioClient});
+  ChatService({required this.dioClient, required UserService userService})
+      : _userService = userService;
 
   Future<List<ChatRoom>> findMyRoom() async {
     final dio = dioClient.dio;
@@ -42,21 +46,32 @@ class ChatService {
       rethrow;
     }
   }
-  Future<void> createRoom(String otherName) async {
+  Future<ChatRoom> createRoom(String otherName) async {
     final dio = dioClient.dio;
 
-    final data = {
-      'otherName': otherName,
-    };
+    try{
 
-    try {
-      await dio.post(
+     final response =  await dio.post(
         '/api/chat/',
-        data: data,
+        data: {
+          'otherName': otherName
+        },
       );
+
+      if (response.data is Map<String,dynamic>) {
+        return ChatRoom.fromJson(response.data);
+      } else {
+        throw Exception('Invalid response data format');
+      }
     } on DioException catch (e) {
-      // 에러 처리
-      print('Failed to create chat room: $e');
+      if (kDebugMode) {
+        print('Failed to create chat room: $e');
+      }
+      rethrow;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Unexpected error while creating chat room: $e');
+      }
       rethrow;
     }
   }

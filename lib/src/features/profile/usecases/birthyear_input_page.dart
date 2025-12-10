@@ -15,30 +15,14 @@ class BirthYearInputPage extends StatefulWidget {
 
 class _BirthYearInputPageState extends State<BirthYearInputPage> {
   late int selectedYear;
-  late int curYear;
-  // int selectedMonth = 1;
-  // int selectedDay = 1;
+  final int maxYear = 2006; // 1. 선택 가능한 최대 연도를 2006으로 지정
+  final int minYear = 1950; // 선택 가능한 최소 연도
 
   @override
   void initState() {
     super.initState();
-    curYear = DateTime.now().year;
-    selectedYear = curYear;
+    selectedYear = maxYear;
   }
-
-  bool isLeapYear(int year) {
-    if (year % 4 != 0) return false;
-    if (year % 100 != 0) return true;
-    return year % 400 == 0;
-  }
-
-  // int getDaysInMonth(int year, int month) {
-  //   List<int> monthDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  //   if (month == 2 && isLeapYear(year)) {
-  //     return 29;
-  //   }
-  //   return monthDays[month - 1];
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -66,13 +50,17 @@ class _BirthYearInputPageState extends State<BirthYearInputPage> {
                           height: 150,
                           child: CupertinoPicker(
                             itemExtent: 40,
-                            scrollController: FixedExtentScrollController(initialItem: curYear - 1950),
+                            scrollController: FixedExtentScrollController(
+                                initialItem: maxYear - minYear),
                             onSelectedItemChanged: (index) {
                               setState(() {
-                                selectedYear = index + 1950;
+                                selectedYear = index + minYear;
                               });
                             },
-                            children: List.generate(curYear - 1950 + 1, (index) => Center(child: Text('${index + 1950}년'))),
+                            children: List.generate(
+                                maxYear - minYear + 1,
+                                    (index) => Center(
+                                    child: Text('${index + minYear}년'))),
                           ),
                         ),
                       ),

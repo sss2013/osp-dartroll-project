@@ -192,11 +192,7 @@ class _MyInfoPageState extends State<MyInfoPage> {
             ),
             const SizedBox(height: 30),
             TextButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("탈퇴 기능은 신중하게 결정해주세요.")),
-                );
-              },
+              onPressed: _showDeleteConfirmDialog,
               child: Text(
                 "계정 탈퇴",
                 style: TextStyle(
@@ -211,6 +207,56 @@ class _MyInfoPageState extends State<MyInfoPage> {
         ),
       ),
     );
+  }
+
+  void _showDeleteConfirmDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text("계정 탈퇴"),
+          content:
+              const Text("정말로 계정을 탈퇴하시겠습니까?\n모든 정보가 영구적으로 삭제되며 복구할 수 없습니다."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text("취소", style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext); // 대화상자 닫기
+                _deleteAccount(); // 탈퇴 처리 함수 호출
+              },
+              child: const Text("탈퇴", style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteAccount() async {
+    try {
+      if (!mounted) return;
+      final userService = context.read<UserService>();
+     await userService.deleteUser();
+
+      // 탈퇴 성공 시 스낵바 표시.
+      // 실제 화면 전환은 main.dart에서 onAuthenticationFailed 스트림을 통해 처리됩니다.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("계정이 성공적으로 탈퇴되었습니다.")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("계정 탈퇴 중 오류가 발생했습니다: ${e is DioException ? e.message : e.toString()}")),
+        );
+      }
+    }
   }
 
   Widget _divider() =>
@@ -254,47 +300,152 @@ class _MyInfoPageState extends State<MyInfoPage> {
     );
   }
 
+  // lib/src/features/my_info_page.dart
+
   void _showNicknameDialog() {
     _nicknameController.text = _nickname;
+
+    // 중복 확인 관련 상태 변수
+    bool? isNameAvailable;
+    String? validationMessage;
+    bool isChecking = false;
+    final bannedNames = [
+      '관리자', '운영자', 'Admin', 'Administrator', 'Root', 'SuperUser', 'System', 'Moderator', 'Mod', 'Staff',
+      '씨발', '병신', '개새끼', '좆', 'ㅂㅅ', 'ㅅㅂ', 'ㄲㅈ', '시발', '애미', '애비', 'ㅄ',
+      'Test', 'Guest', 'Anonymous', '익명', '유저', 'User'
+    ];
 
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text("닉네임 변경"),
-          content: TextField(
-            controller: _nicknameController,
-            decoration: const InputDecoration(
-              hintText: "새로운 닉네임을 입력하세요",
-              border: OutlineInputBorder(),
-              focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.lightBlue)),
-            ),
-            autofocus: true,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("취소", style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.lightBlue,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
+        // 다이얼로그 내부 상태 관리를 위해 StatefulBuilder 사용
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            // 닉네임 입력 감지하여 유효성 검사 상태 초기화
+            _nicknameController.addListener(() {
+              if (isNameAvailable != null || validationMessage != null) {
+                setDialogState(() {
+                  isNameAvailable = null;
+                  validationMessage = null;
+                });
+              }
+            });
+
+            Future<void> checkDuplicate() async {
+              final newName = _nicknameController.text.trim();
+
+              if (newName == _nickname) {
+                setDialogState(() {
+                  isNameAvailable = false;
+                  validationMessage = "현재 닉네임과 동일합니다.";
+                });
+                return;
+              }
+              if (newName.isEmpty) {
+                setDialogState(() {
+                  isNameAvailable = false;
+                  validationMessage = "닉네임을 입력해 주세요.";
+                });
+                return;
+              }
+              final lowerBanned = bannedNames.map((e) => e.toLowerCase()).toList();
+              if (lowerBanned.any((b) => newName.toLowerCase().contains(b))) {
+                setDialogState(() {
+                  isNameAvailable = false;
+                  validationMessage = '사용할 수 없는 이름입니다.';
+                });
+                return;
+              }
+
+              setDialogState(() => isChecking = true);
+
+              try {
+                final userService = context.read<UserService>();
+                final isDuplicate = await userService.checkName(newName);
+                setDialogState(() {
+                  isNameAvailable = !isDuplicate;
+                  validationMessage = isDuplicate ? '이미 사용중인 닉네임입니다.' : '사용 가능한 닉네임입니다.';
+                });
+              } catch (e) {
+                setDialogState(() {
+                  isNameAvailable = false;
+                  validationMessage = '오류가 발생했습니다.';
+                });
+              } finally {
+                setDialogState(() => isChecking = false);
+              }
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text("닉네임 변경"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _nicknameController,
+                          maxLength: 7,
+                          decoration: const InputDecoration(
+                            hintText: "새로운 닉네임을 입력하세요",
+                            border: OutlineInputBorder(),
+                            focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.lightBlue)),
+                            counterText: '',
+                          ),
+                          autofocus: true,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        height: 58, // TextField 높이와 맞춤
+                        child: ElevatedButton(
+                          onPressed: isChecking ? null : checkDuplicate,
+                          child: isChecking
+                              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                              : const Text('중복확인'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (validationMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0, left: 4.0),
+                      child: Text(
+                        validationMessage!,
+                        style: TextStyle(
+                          color: isNameAvailable == true ? Colors.blue : Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              onPressed: () {
-                final newName = _nicknameController.text.trim();
-                if (newName.isNotEmpty) {
-                  _updateNickname(newName);
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text("저장", style: TextStyle(color: Colors.white)),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("취소", style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.lightBlue,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  // isNameAvailable이 true일 때만 저장 버튼 활성화
+                  onPressed: isNameAvailable == true
+                      ? () {
+                    _updateNickname(_nicknameController.text.trim());
+                    Navigator.pop(context);
+                  }
+                      : null,
+                  child: const Text("저장", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
         );
       },
     );

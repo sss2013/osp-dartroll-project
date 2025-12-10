@@ -39,7 +39,7 @@ void main() async {
   final postService = PostService(dioClient: dioClient);
   final performanceService = PerformanceService(dioClient: dioClient);
   final commentService = CommentService(dioClient: dioClient);
-  final chatService = ChatService(dioClient: dioClient);
+  final chatService = ChatService(dioClient: dioClient, userService: userService);
   final eventService = EventService(dioClient: dioClient);
 
   runApp(

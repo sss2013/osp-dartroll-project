@@ -3,13 +3,10 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // 💡 [추가] Provider 사용을 위한 임포트
-import 'package:dio/dio.dart'; // 💡 [추가] DioException 처리를 위한 임포트
-// http 임포트는 제거되었습니다 (Service 계층으로 이동)
-// import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
 import 'package:cultureyo/src/features/community/data/post_model.dart';
 import 'package:url_launcher/url_launcher.dart';
-// PostService 추가
 import 'package:cultureyo/src/features/community/service/post_service.dart';
 
 
@@ -23,18 +20,15 @@ class PostEditPage extends StatefulWidget {
 }
 
 class _PostEditPageState extends State<PostEditPage> {
-  // 제목 컨트롤러는 초기 데이터 채우기 용도로만 사용하고, 내용은 수정 가능해야 합니다.
   final TextEditingController titleController = TextEditingController();
   final TextEditingController contentController = TextEditingController();
   final int titleMaxLength = 80;
   final int contentMaxLength = 500;
 
-  // 💡 [테스트용] 현재 사용자 ID 정의 (API 요청에 필요했으나, 제거 예정)
-  // 현재는 PostDetailPage처럼 UserService를 통해 ID를 로드하는 로직이 없으므로,
-  // 이 페이지 진입 시 인증 상태가 유지된다는 가정 하에 ID 필드 자체는 그대로 둡니다.
-  final String _currentUserId = 'testUser123';
+  // 🌟 [추가] 중복 제출 방지 상태 변수
+  bool _isSubmitting = false;
 
-  // ⭐ [변경] PostService 인스턴스를 Provider로 주입받을 변수로 선언
+  final String _currentUserId = 'testUser123';
   late PostService _postService;
 
   @override
@@ -43,29 +37,27 @@ class _PostEditPageState extends State<PostEditPage> {
     _initializeData();
   }
 
-  // 💡 [추가] Service 인스턴스를 context를 통해 가져오는 메서드
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // context.read를 사용하여 Service 인스턴스를 가져옵니다.
     _postService = context.read<PostService>();
   }
 
 
-  // ⭐ [새 로직] 기존 게시물 데이터를 폼에 채우기
   void _initializeData() {
     final Post post = widget.postToEdit;
 
-    // 1. 제목 및 내용 설정
     titleController.text = post.title;
-    // content는 수정 가능해야 하므로, 초기값으로 채웁니다.
     contentController.text = post.content;
   }
 
-  // ⭐ [API 로직] 게시물 수정 API 호출 (POST 요청 사용) - Service 호출로 변경
+  // ⭐ [API 로직 수정] _isSubmitting 체크 및 상태 변경 로직 추가
   Future<void> _editPostApi() async {
     final String newContent = contentController.text.trim();
     final BuildContext currentContext = context;
+
+    // 🌟 [수정] 이미 제출 중이면 함수 종료 (더블 클릭 방지)
+    if (_isSubmitting) return;
 
     if (newContent.isEmpty) {
       ScaffoldMessenger.of(currentContext).showSnackBar(
@@ -74,12 +66,15 @@ class _PostEditPageState extends State<PostEditPage> {
       return;
     }
 
+    // 🌟 [추가] 제출 시작: 상태 변경 및 UI 업데이트 (버튼 비활성화)
+    setState(() {
+      _isSubmitting = true;
+    });
+
     final String postId = widget.postToEdit.id;
     final String category = widget.postToEdit.category;
 
-    // 💡 [수정] DioException 처리 로직으로 변경
     try {
-      // 💡 [수정] _currentUserId 인자 제거 (Header 토큰 인증 사용)
       final success = await _postService.modifyPost(
         postId,
         category,
@@ -91,18 +86,17 @@ class _PostEditPageState extends State<PostEditPage> {
       if (success) {
         // [게시물 수정 성공]
         ScaffoldMessenger.of(currentContext).showSnackBar(
-          const SnackBar(content: Text('게시물이 성공적으로 수정되었습니다.')),
+          const SnackBar(content: Text('게시물이 성공적으로 수정되었습니다.',), duration: const Duration(milliseconds: 1000)),
         );
         // 상세 페이지로 돌아갈 때, 데이터가 수정되었음을 알리기 위해 pop(true)
         Navigator.pop(currentContext, true);
-
       } else {
         // 실패는 Service 내부에서 로그 처리됨. 여기서는 사용자에게 알림
         ScaffoldMessenger.of(currentContext).showSnackBar(
           const SnackBar(content: Text('게시물 수정에 실패했습니다 (서버 응답 오류)')),
         );
       }
-    } on DioException catch (e) { // 💡 [추가] DioException 처리
+    } on DioException catch (e) {
       log('🚨 [게시물 수정 Dio 에러] ${e.message}', name: 'POST_EDIT');
       if (!mounted) return;
       // 서버에서 전달된 메시지가 있다면 사용, 없다면 Dio 에러 메시지 사용
@@ -111,34 +105,39 @@ class _PostEditPageState extends State<PostEditPage> {
         SnackBar(content: Text('게시물 수정 중 오류 발생: $errorMessage')),
       );
     } catch (e) {
-      // Service 내부에서 에러 로그가 찍히므로, 여기서는 사용자에게 네트워크 오류만 알림 (기존 로직 유지)
       log('🚨 [게시물 수정 일반 에러] Exception: $e', name: 'POST_EDIT');
       if (!mounted) return;
       ScaffoldMessenger.of(currentContext).showSnackBar(
         const SnackBar(content: Text('게시물 수정 중 예상치 못한 연결 오류가 발생했습니다.')),
       );
+    } finally {
+      // 🌟 [추가] 작업 완료: 상태 변경 및 UI 업데이트 (성공/실패 무관, 버튼 재활성화)
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 
   // '수정 완료' 버튼 클릭 시
   void _onSubmit() {
-    _editPostApi(); // 수정 API 호출
+    // 🌟 [수정] 제출 중이 아닐 때만 API 호출 허용
+    if (!_isSubmitting) {
+      _editPostApi();
+    }
   }
 
 
   // --- 기존 코드에서 가져온 UI 관련 헬퍼 함수 ---
-
-  // ⭐ [수정] 공연 상세 카드 UI 위젯 (링크 기능 유지 및 상세페이지 양식 동일하게 적용)
   Widget _buildPerformanceCard() {
     final post = widget.postToEdit;
 
-    // URL이 없으면 카드도 표시하지 않음
     if (post.performanceUrl == null || post.performanceUrl!.isEmpty) {
       return const SizedBox.shrink();
     }
 
     final url = post.performanceUrl!;
-    // ⭐ [수정] 상세 페이지와 동일한 대체 텍스트 사용
     final displayTitle = '이 공연에 대해 더 알고싶다면?';
 
     return Padding(
@@ -153,7 +152,6 @@ class _PostEditPageState extends State<PostEditPage> {
               final uri = Uri.parse(url);
               try {
                 if (await canLaunchUrl(uri)) {
-                  // 새 브라우저 창으로 링크 열기 기능 유지
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
                 } else {
                   if (mounted) {
@@ -173,7 +171,7 @@ class _PostEditPageState extends State<PostEditPage> {
           },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: Colors.blue[50], // 상세 페이지와 동일한 배경색
+            color: Colors.blue[50],
             child: Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
@@ -186,14 +184,13 @@ class _PostEditPageState extends State<PostEditPage> {
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Colors.black87, // ⭐ [수정] 상세 페이지와 동일한 글자색
+                        color: Colors.black87,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),
-                // ⭐ [수정] 상세 페이지와 동일한 아이콘 및 색상
                 const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
               ],
             ),
@@ -265,7 +262,6 @@ class _PostEditPageState extends State<PostEditPage> {
                             '선택된 공연은 수정이 불가합니다.',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            // ⭐ [수정] 제목 필드와 동일하게 readOnlyStyle 적용
                             style: readOnlyStyle,
                           ),
                         ),
@@ -333,11 +329,23 @@ class _PostEditPageState extends State<PostEditPage> {
             right: 12,
             bottom: 12,
             child: ElevatedButton(
-              onPressed: _onSubmit,
-              child: const Text('수정 완료', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              // 🌟 [수정] _isSubmitting이 true일 때 onPressed를 null로 설정하여 버튼 비활성화
+              onPressed: _isSubmitting ? null : _onSubmit,
+              child: _isSubmitting
+                  ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white), // 버튼 배경색과 대비되는 흰색으로 설정
+                ),
+              )
+                  : const Text('수정 완료', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.lightBlue,
                 minimumSize: const Size(120, 48),
+                // 🌟 [추가] 비활성화된 상태의 색상 정의
+                disabledBackgroundColor: Colors.grey[400],
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
               ),

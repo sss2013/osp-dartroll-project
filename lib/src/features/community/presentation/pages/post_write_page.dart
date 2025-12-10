@@ -47,6 +47,9 @@ class _PostWritePageState extends State<PostWritePage> {
   Performance? selectedPerformance;
   PerformanceDetail? selectedPerformanceDetail;
 
+  // 🌟 [추가] 중복 제출 방지 상태 변수
+  bool _isSubmitting = false;
+
   final List<String> regions = [
     '강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '온라인'
   ];
@@ -88,6 +91,9 @@ class _PostWritePageState extends State<PostWritePage> {
 
   // 게시물 작성 API 호출 로직 (PostService 사용)
   Future<void> _createPostApi() async {
+    // 🌟 [수정] 이미 제출 중이면 함수 종료 (더블 클릭 방지)
+    if (_isSubmitting) return;
+
     // 1. 필수 데이터 확인
     if (selectedPerformanceDetail == null || selectedPerformance == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -109,20 +115,20 @@ class _PostWritePageState extends State<PostWritePage> {
       finalGenre = '교육/체험';
     }
 
-    // 3. userId와 content 필드명 적용
-    // 💡 [수정] userId를 Header 토큰에서 추출하기로 합의했으므로, Body에 userId를 포함하는 로직을 제거합니다.
-    // String currentUserId = 'testUser123'; // 임시 테스트 ID 사용 로직 제거
-
     // 4. 서버로 전송할 요청 본문
     final Map<String, dynamic> requestBody = {
       "title": titleController.text,
-      // 💡 [수정] "userId": currentUserId, // 테스트 userId 반영 로직 제거
       "area": detail.area ?? '온라인',
       "genre": finalGenre, // 최종 결정된 장르 값 사용
       "content": contentController.text, // content -> context로 필드명 변경 (원래 로직 유지)
       "url": performanceUrl,
       "tap": widget.category,
     };
+
+    // 🌟 [추가] 제출 시작: 상태 변경 및 UI 업데이트 (버튼 비활성화)
+    setState(() {
+      _isSubmitting = true;
+    });
 
     try {
       // 💡 [변경] PostService의 createPost 함수 호출
@@ -159,6 +165,13 @@ class _PostWritePageState extends State<PostWritePage> {
           SnackBar(content: Text('게시물 작성 중 오류가 발생했습니다: $errorMessage')),
         );
       }
+    } finally {
+      // 🌟 [추가] 작업 완료: 상태 변경 및 UI 업데이트 (성공/실패 무관, 버튼 재활성화)
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 
@@ -173,7 +186,10 @@ class _PostWritePageState extends State<PostWritePage> {
       );
       return;
     }
-    _createPostApi();
+    // 🌟 [수정] 제출 중이 아닐 때만 API 호출 허용
+    if (!_isSubmitting) {
+      _createPostApi();
+    }
   }
   String htmlDecode(String input) {
     return input
@@ -759,10 +775,22 @@ class _PostWritePageState extends State<PostWritePage> {
             right: 12,
             bottom: 12,
             child: ElevatedButton(
-              onPressed: _onSubmit,
-              child: const Text('완료', style: TextStyle(color: Colors.black)),
+              // 🌟 [수정] _isSubmitting이 true일 때 onPressed를 null로 설정하여 버튼 비활성화
+              onPressed: _isSubmitting ? null : _onSubmit,
+              child: _isSubmitting
+                  ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                ),
+              )
+                  : const Text('완료', style: TextStyle(color: Colors.black)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
+                // 🌟 [추가] 비활성화된 상태의 색상 정의
+                disabledBackgroundColor: Colors.grey[300],
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
               ),

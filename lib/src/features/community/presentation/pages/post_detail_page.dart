@@ -30,6 +30,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
   bool _isPostReported = false;
   late int _postReportedCount;
 
+  // 🌟 [추가] 중복 댓글 작성 방지 상태 변수
+  bool _isCommentSubmitting = false;
+
   final TextEditingController _commentController = TextEditingController();
   final FocusNode _commentFocusNode = FocusNode();
 
@@ -186,9 +189,14 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
+  // 🌟 [수정] 중복 제출 방지 로직 추가
   Future<void> _submitCommentApi() async {
-    if (_currentUserId == null) {
-      _showSnackbar('사용자 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+    if (_currentUserId == null || _isCommentSubmitting) { // 🌟 [수정] 이미 제출 중이거나 사용자 정보 로드 전이면 리턴
+      if (_isCommentSubmitting) {
+        _showSnackbar('댓글 작성 중입니다. 잠시 기다려 주세요.', duration: const Duration(seconds: 2));
+      } else {
+        _showSnackbar('사용자 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.', duration: const Duration(seconds: 2));
+      }
       return;
     }
 
@@ -200,6 +208,11 @@ class _PostDetailPageState extends State<PostDetailPage> {
           duration: const Duration(milliseconds: 1000));
       return;
     }
+
+    // 🌟 [추가] 제출 시작 상태 설정
+    setState(() {
+      _isCommentSubmitting = true;
+    });
 
     try {
       final success = await _commentService.submitComment(
@@ -231,6 +244,13 @@ class _PostDetailPageState extends State<PostDetailPage> {
       }
     } catch (e) {
       _showSnackbar('작성 중 예상치 못한 오류 발생');
+    } finally {
+      // 🌟 [추가] 제출 완료 (성공/실패 무관하게 상태 초기화)
+      if (mounted) {
+        setState(() {
+          _isCommentSubmitting = false;
+        });
+      }
     }
   }
 
@@ -562,10 +582,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
         widget.post.performanceTitle!.isNotEmpty)
         ? widget.post.performanceTitle!
         : '이 공연에 대해 더 알고싶다면?';
-
-    // 이전에 저장된 정보를 활용하여 PerformanceDetail이 필요함을 인지합니다.
-    // 현재는 URL만 사용하지만, 상세 정보(thumbnail, date, region, genre)를 표시할 수 있습니다.
-    // [2025-11-18] 저장된 정보: ID 포맷 'genre:number', '/api/getEventDetail' API 호출 계획
 
     return Padding(
       padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
@@ -1175,7 +1191,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
                               if (result == true) {
                                 _showSnackbar(
-                                    '게시물이 수정되었습니다. (상세 정보 새로고침 필요).');
+                                    '상세 정보 새로고침이 필요합니다.');
                                 // TODO: 수정 완료 후 게시물 상세 정보 갱신 로직 추가 필요
                               }
                             },
@@ -1440,78 +1456,96 @@ class _PostDetailPageState extends State<PostDetailPage> {
             ),
           ),
           SafeArea(
-          top: false,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            color: Colors.blue[200],
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _commentController,
-                    focusNode: _commentFocusNode,
-                    readOnly: _currentUserId == null || _isUserIdLoading,
-                    decoration: InputDecoration(
-                      hintText: _isUserIdLoading
-                          ? '사용자 정보를 불러오는 중...'
-                          : (_currentUserId == 'guest_unauth'
-                          ? '로그인 상태를 확인할 수 없습니다.'
-                          : _commentHintText),
-                      hintStyle: TextStyle(
-                          color: _currentUserId == 'guest_unauth'
-                              ? Colors.red
-                              : Colors.grey[500]),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: (_currentUserId == null ||
-                      _isUserIdLoading ||
-                      _currentUserId == 'guest_unauth')
-                      ? null
-                      : _submitCommentApi,
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: (_currentUserId == null ||
-                          _isUserIdLoading ||
-                          _currentUserId == 'guest_unauth')
-                          ? Colors.grey
-                          : Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.3),
-                          spreadRadius: 1,
-                          blurRadius: 3,
-                          offset: const Offset(0, 2),
+            top: false,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              color: Colors.blue[200],
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _commentController,
+                      focusNode: _commentFocusNode,
+                      // 🌟 [수정] 댓글 제출 중이면 읽기 전용으로 설정
+                      readOnly: _currentUserId == null || _isUserIdLoading || _isCommentSubmitting,
+                      decoration: InputDecoration(
+                        hintText: _isUserIdLoading
+                            ? '사용자 정보를 불러오는 중...'
+                            : (_currentUserId == 'guest_unauth'
+                            ? '로그인 상태를 확인할 수 없습니다.'
+                        // 🌟 [수정] 댓글 제출 중일 때 힌트 텍스트 변경
+                            : (_isCommentSubmitting ? '댓글 작성 중...' : _commentHintText)),
+                        hintStyle: TextStyle(
+                            color: (_currentUserId == 'guest_unauth' || _isCommentSubmitting)
+                                ? Colors.red
+                                : Colors.grey[500]),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide.none,
                         ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.send,
-                      color: (_currentUserId == null ||
-                          _isUserIdLoading ||
-                          _currentUserId == 'guest_unauth')
-                          ? Colors.white
-                          : Colors.lightBlue,
-                      size: 24,
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    // 🌟 [수정] 제출 중이거나 권한이 없을 때 onTap을 null로 설정하여 비활성화
+                    onTap: (_currentUserId == null ||
+                        _isUserIdLoading ||
+                        _currentUserId == 'guest_unauth' ||
+                        _isCommentSubmitting)
+                        ? null
+                        : _submitCommentApi,
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        // 🌟 [수정] 제출 중일 때 색상을 회색으로 변경
+                        color: (_currentUserId == null ||
+                            _isUserIdLoading ||
+                            _currentUserId == 'guest_unauth' ||
+                            _isCommentSubmitting)
+                            ? Colors.grey
+                            : Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.3),
+                            spreadRadius: 1,
+                            blurRadius: 3,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        // 🌟 [추가] 제출 중일 때 로딩 인디케이터 표시
+                        child: _isCommentSubmitting
+                            ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                            : Icon(
+                          Icons.send,
+                          color: (_currentUserId == null ||
+                              _isUserIdLoading ||
+                              _currentUserId == 'guest_unauth')
+                              ? Colors.white
+                              : Colors.lightBlue,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
           ),
         ],
       ),

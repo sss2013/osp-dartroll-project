@@ -1,44 +1,47 @@
-# EventMatcher Mobile App
+# :musical_note: 컬쳐요(Cultureyo)
 
-### 1. 프로젝트 구조
-- `lib/src/features/`: 기능별 모듈
-- `lib/src/shared/`: 공통 컴포넌트
-- `lib/src/core/`: 핵심 유틸리티
+컬쳐요(Cultureyo)는 **다양한 장르의 전국 공연정보 통합 제공과 맞춤형 동행자 매칭 서비스를 제공하는 크로스플랫폼 모바일 애플리케이션**입니다. 
 
-## 개발 환경 설정
-의존성 설치: `flutter pub get`
+사용자는 지역/장르 필터를 통한 사용자 친화적 탐색을 기반으로 공연 정보를 탐색 할 수 있고, 게시판 및 1:1 채팅 기능을 통해 공연 동행자를 구하여 공연 경험을 확장할 수 있습니다.
 
-## 파일명: snake_case
-user_profile_page.dart
-event_list_widget.dart
+본 프로젝트는 Flutter를 활용하였으며 **Android와 iOS를 동시에 지원**합니다.
 
-## 클래스명: PascalCase
-class UserProfilePage extends StatelessWidget {}
+## 🤖 주요 기능
+- 로그인 및 회원 탈퇴
+- 지역과 장르를 기반으로 한 공연정보 탐색
+- 커뮤니티 기능 (리뷰 게시판 / 친구 찾기 게시판)
+- 사용자 간 1:1 채팅
 
-## 변수명: camelCase
-String userName = '';
-DateTime eventStartDate = DateTime.now();
+## ✍ 개발 환경
+### Frontend
+- **Flutter** 
+- **Dart**
 
+### Backend
+- **Node.js** (서버)
+- **Render** (서버 배포)
 
-### 2. Git 규칙
+### Database
+- **Redis** : 공연 정보 관리
+- **Supabase** : 사용자 정보 관리
+- **MongoDB** : 게시글 및 채팅 데이터 관리
 
-### 1) Branch (git flow)
+### :family: 협업 Tool
+- Discord, Notion, KaKaoTalk, Github
+  
 
-git branch는 다음과 보통 다음과 같이 있다 - main, develop, feature, (release, hotfixes)
+## :sunglasses: 팀 구성 및 역할
+- **신성수(팀장, 백엔드 담당)** - 로그인 기능, 서버, DB, 공연 정보 API 구현 
 
-- main: 배포본
-- develop : 배포본 이전본, 총 통합 브랜치 역할
-- feature/기능명 : 기능ex) feature/login, feature/main
+- **이상엽(팀원, 프론트엔드 담당)** - 메인화면, 공연 탐색 기능, 마이페이지 UI 구현
+ 
+- **김민욱(팀원, 프론트엔드 담당)** - 채팅 페이지 UI, 백엔드 지원 업무(게시판 API 구현)
+ 
+- **최형서(팀원, 프론트엔드 담당)** - 게시판 기능, 로그인 화면 UI 구현
 
-1. 개인이 맡은 기능(feature) 브랜치에서 작업하고,
-2. 해당 기능이 완성 됐으면 develop 브랜치에 올린다.
-3. develop에 모든 기능들이 모이고 문제 없이 정상적으로 작동하면
-4. main 브랜치(배포본)에 올린다.
+## 😓 한계점 / 향후 개선 방안
+- 게시판 CRUD 기능 수행 후 새로고침이 필요한 구조
+- 알림 기능 미구현
+- 낯선 사용자와 채팅 시 경고 문구 표시 기능 미구현
 
-### 2) Commit 컨벤션
-
-feat : 새로운 기능 추가
-
-- fix : 기능 수정
-- style : 스타일 관련
-- refactor : 코드 리펙토링
+:point_right: 향후 논의와 개선을 통해 사용자 경험을 지속적으로 향상 시키겠습니다.

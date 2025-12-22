@@ -6,6 +6,8 @@
 
 본 프로젝트는 Flutter를 활용하였으며 **Android와 iOS를 동시에 지원**합니다.
 
+- 시연 영상 URL:
+  
 ## 🤖 주요 기능
 - **소셜 로그인**
 <img src = "https://github.com/user-attachments/assets/5847fe73-c1d0-4f72-bd17-63a0550e4260" width="200" height="400">
@@ -73,3 +75,4 @@
 - 낯선 사용자와 채팅 시 경고 문구 표시 기능 미구현
 
 :point_right: 향후 논의와 개선을 통해 사용자 경험을 지속적으로 향상 시키겠습니다.
+

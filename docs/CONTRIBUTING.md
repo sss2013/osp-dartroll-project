@@ -67,5 +67,4 @@ feat : 새로운 기능 추가
 1. feature 브랜치에서 작업
 2. develop으로 Pull Request 생성
 3. 최소 1명의 리뷰어 승인 필요
-4. 모든 테스트 통과 후 머지
 

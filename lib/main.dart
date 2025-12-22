@@ -1,36 +1,68 @@
+import 'package:cultureyo/src/core/network/dio_client.dart';
 import 'package:cultureyo/src/features/authentication/domain/usecases/auth_manager.dart';
-import 'package:cultureyo/src/features/authentication/domain/usecases/kakao_login_service.dart';
-import 'package:cultureyo/src/features/authentication/domain/usecases/naver_login_service.dart';
+import 'package:cultureyo/src/features/authentication/presentation/pages/login_page.dart';
 import 'package:cultureyo/src/features/authentication/presentation/pages/splash_page.dart';
-import 'package:flutter/foundation.dart';
+import 'package:cultureyo/src/features/chat/service/chat_service.dart';
+import 'package:cultureyo/src/features/event/service/event_service.dart';
+import 'package:cultureyo/src/features/profile/domain/user_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:cultureyo/src/features/community/service/post_service.dart';
+import 'package:cultureyo/src/features/community/service/performance_service.dart';
+import 'package:cultureyo/src/features/community/service/comment_service.dart';
+import 'package:flutter/services.dart'; // SystemChrome 사용을 위해 필요
 
-Future<void> main() async {
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+void main() async {
+  // 1. Flutter Engine 바인딩 초기화
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 앱 전체 화면 방향 세로로 고정
+  // runnApp()보다 먼저 실행되어야 앱 전체에 적용됩니다.
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,     // 세로 방향 (정방향)
+    DeviceOrientation.portraitDown,   // 세로 방향 (역방향)
+  ]);
+
+  await initializeDateFormatting('ko_KR', null);
   await dotenv.load(fileName: '.env');
 
   final kakaoKey = dotenv.env['KAKAO_NATIVE_APP_KEY'];
 
   KakaoSdk.init(nativeAppKey: kakaoKey);
-  if (kDebugMode) {
-    print(kakaoKey);
-  }
 
-  final kakaoService = KakaoLoginService();
-  final naverService = NaverLoginService();
+  const secureStorage = FlutterSecureStorage();
+  final dioClient = DioClient(secureStorage);
+
   final authManager = AuthManager(
-    kakaoService: kakaoService,
-    naverService: naverService,
+    dioClient: dioClient,
+    secureStorage: secureStorage,
   );
 
+  final userService = UserService(dioClient: dioClient);
+  final postService = PostService(dioClient: dioClient);
+  final performanceService = PerformanceService(dioClient: dioClient);
+  final commentService = CommentService(dioClient: dioClient);
+  final chatService = ChatService(dioClient: dioClient, userService: userService);
+  final eventService = EventService(dioClient: dioClient);
+
   runApp(
-      ChangeNotifierProvider(
-        create : (_) => authManager,
-        child : const MyApp(),
+      MultiProvider(providers: [
+        ChangeNotifierProvider(create: (_) => authManager),
+        Provider<UserService>(create: (_) => userService),
+        Provider<PostService>(create: (_) => postService),
+        Provider<PerformanceService>(create: (_) => performanceService),
+        Provider<CommentService>(create: (_) => commentService),
+        Provider<ChatService>(create: (_) => chatService),
+        Provider<EventService>(create: (_) => eventService),
+      ],
+        child: const MyApp(),
       )
   );
 }
@@ -42,12 +74,22 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
 
     return MaterialApp(
-      debugShowCheckedModeBanner: false, // 우측 상단의 'DEBUG' 배너 제거
-      title: 'Cultureyo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const SplashPage()
+        navigatorKey: navigatorKey,
+        debugShowCheckedModeBanner: false, // 우측 상단의 'DEBUG' 배너 제거
+        title: 'Cultureyo',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+        ),
+      //로그인 창 스킵하고 바로 홈화면으로 넘어가서 테스트하고 싶을 떄 사용
+      //home: MainScreen()
+
+      routes: {
+        '/' : (context) => const SplashPage(),
+        '/login' : (context) => const LoginPage()
+      },
+      initialRoute: '/',
+
+
     );
   }
 }

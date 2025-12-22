@@ -1,84 +1,176 @@
-import 'package:cultureyo/src/features/authentication/domain/entities/auth_data.dart' show AuthData;
-import 'package:cultureyo/src/features/authentication/domain/usecases/auth_service.dart';
+import 'dart:async';
+import 'package:cultureyo/main.dart';
+import 'package:cultureyo/src/features/authentication/domain/entities/auth_data.dart'
+    show AuthData;
 import 'package:cultureyo/src/features/authentication/domain/usecases/kakao_login_service.dart';
 import 'package:cultureyo/src/features/authentication/domain/usecases/naver_login_service.dart';
+import 'package:cultureyo/src/features/authentication/domain/usecases/auth_service.dart';
+import 'package:cultureyo/src/core/network/dio_client.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-enum AuthStatus { none, kakao, naver }
+enum AuthStatus { none, kakao, naver, authenticated }
 
 class AuthManager extends ChangeNotifier {
   final KakaoLoginService kakaoService;
   final NaverLoginService naverService;
-  final secureStorage = const FlutterSecureStorage();
+  final DioClient dioClient;
+  final FlutterSecureStorage secureStorage;
+
+  late StreamSubscription _authSubscription;
 
   AuthStatus _status = AuthStatus.none;
+
   AuthStatus get status => _status;
 
   AuthManager({
-    required this.kakaoService,
-    required this.naverService,
-  });
+    required this.dioClient,
+    required this.secureStorage,
+  })  : kakaoService = KakaoLoginService(
+            publicDio: dioClient.publicDio, secureStorage: secureStorage),
+        naverService = NaverLoginService(
+            publicDio: dioClient.publicDio, secureStorage: secureStorage) {
+    _authSubscription = dioClient.onAuthenticationFailed.listen((_) {
+      _handleSessionExpired();
+    });
+  }
+
+  Future<void> _handleSessionExpired() async {
+    _status = AuthStatus.none;
+    notifyListeners();
+
+    if (navigatorKey.currentState != null) {
+      navigatorKey.currentState!
+          .pushNamedAndRemoveUntil('/login', (route) => false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
+  }
 
   Future<void> checkAuth() async {
-    final kakaoStatus = await kakaoService.checkToken();
-    if(kDebugMode) print('kakao 결과 : $kakaoStatus');
-    if (kakaoStatus == TokenStatus.valid) {
+    final tokenStatus = await kakaoService.checkToken();
+
+    if (tokenStatus == TokenStatus.valid) {
       _status = AuthStatus.kakao;
       notifyListeners();
       return;
-    } else if (kakaoStatus == TokenStatus.expired) {
-      final refreshedData = await kakaoService.refreshToken();
-      if (refreshedData != null) {
-        await _saveToken(AuthStatus.kakao, refreshedData);
-        _status = AuthStatus.kakao;
-        notifyListeners();
-        return;
-      }
-    } else if (kakaoStatus == TokenStatus.timeMisMatch) {
-      if (kDebugMode) {
-        print('카카오 : 로컬 시간과 서버시간이 너무 차이남');
-      }
-    } else if (kakaoStatus == TokenStatus.networkError) {
-      if (kDebugMode) print('카카오 저장 토큰 없거나 또는 네트워크 오류');
     }
 
-    final naverStatus = await naverService.checkToken();
-    if(kDebugMode) print('naver 결과 : $naverStatus');
-    if (naverStatus == TokenStatus.valid) {
-      _status = AuthStatus.naver;
-      notifyListeners();
-      return;
-    } else if (naverStatus == TokenStatus.expired) {
-      final refreshedData = await naverService.refreshToken();
-      if (refreshedData != null) {
-        await _saveToken(AuthStatus.naver, refreshedData);
-        _status = AuthStatus.naver;
+    if (tokenStatus == TokenStatus.expired) {
+      final refreshed = await _manualRefresh();
+      if (refreshed) {
+        _status = AuthStatus.authenticated;
         notifyListeners();
         return;
       }
-    } else if (naverStatus == TokenStatus.timeMisMatch) {
-      if (kDebugMode) {
-        print('로컬 시간과 서버시간이 너무 차이남');
-      }
-    } else if (naverStatus == TokenStatus.networkError) {
-      if (kDebugMode) print('네이버 저장 토큰 없거나 네트워크 오류');
     }
 
     _status = AuthStatus.none;
     notifyListeners();
   }
 
-  Future<void> _saveToken(AuthStatus provider, AuthData data) async {
-    await secureStorage.write(key: '${provider}_access_token', value: data.accessToken);
+  Future<bool> _manualRefresh() async {
+    final refreshToken = await secureStorage.read(key: 'server_refresh_token');
+    if (refreshToken == null) return false;
+
+    if (kDebugMode) {
+      print('Attempting manual refresh with token: $refreshToken');
+    }
+
+    try {
+      final response = await dioClient.publicDio.post(
+        '/api/auth/refresh',
+        data: {'refreshToken': refreshToken},
+      );
+
+      if (response.statusCode == 200) {
+        final authData = AuthData(
+          serverJwt: response.data['access']['token'],
+          serverJwtExpiresAt:
+              DateTime.parse(response.data['access']['expiresAt']),
+          refreshToken: response.data['refresh']?['token'],
+        );
+        await _saveServerTokens(authData);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Manual refresh failed: $e');
+      }
+      return false;
+    }
+  }
+
+  Future<bool> _refreshAny() async {
+    final refreshToken = await secureStorage.read(key: 'server_refresh_token');
+    if (refreshToken == null) return false;
+
+    final refreshed =
+        await kakaoService.refreshToken() ?? await naverService.refreshToken();
+    if (refreshed != null) {
+      await _saveServerTokens(refreshed);
+      return true;
+    }
+    return false;
+  }
+
+  Future<bool> signInWithKakao() async {
+    final auth = await kakaoService.login();
+    if (auth != null) {
+      await _saveServerTokens(auth);
+      _status = AuthStatus.kakao;
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  Future<bool> signInWithNaver() async {
+    final auth = await naverService.login();
+    if (auth != null) {
+      await _saveServerTokens(auth);
+      _status = AuthStatus.naver;
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> _saveServerTokens(AuthData data) async {
+    await secureStorage.write(key: 'server_jwt', value: data.serverJwt);
     await secureStorage.write(
-      key: '${provider}_access_expires_at',
-      value: data.accessTokenExpiresAt.toUtc().toIso8601String(),
-    );
-    if (kDebugMode) print('$provider 토큰 저장 완료');
+        key: 'server_jwt_expires_at',
+        value: data.serverJwtExpiresAt.toUtc().toIso8601String());
+
+    if (data.refreshToken != null) {
+      await secureStorage.write(
+          key: 'server_refresh_token', value: data.refreshToken);
+      if (data.refreshTokenExpiresAt != null) {
+        await secureStorage.write(
+            key: 'server_refresh_expires_at',
+            value: data.refreshTokenExpiresAt!.toUtc().toIso8601String());
+      }
+    } else {
+      await secureStorage.delete(key: 'server_refresh_token');
+      await secureStorage.delete(key: 'server_refresh_expires_at');
+    }
   }
 
   Future<bool> checkInput() async {
-    return false;
+    final pref = await SharedPreferences.getInstance();
+    final bool isComplete = pref.getBool('isProfileComplete') ?? false;
+    return isComplete;
+  }
+
+  Future<bool> checkFirstChat() async {
+    final pref= await SharedPreferences.getInstance();
+    final bool isFirstChatDone = pref.getBool('isFirstChatDone') ?? false;
+    return isFirstChatDone;
   }
 }

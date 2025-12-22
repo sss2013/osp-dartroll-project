@@ -1,11 +1,13 @@
 // lib/src/features/community/presentation/pages/board_page.dart
 
-import 'dart:convert';
+import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http; // http 패키지 추가
+import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
+
+import 'package:cultureyo/src/features/community/service/post_service.dart';
 import 'package:cultureyo/src/features/community/data/post_model.dart';
-// import 'package:cultureyo/src/features/community/dummy_posts.dart'; // 🗑️ 더미 데이터 삭제
 
 import 'post_detail_page.dart';
 import 'post_write_page.dart';
@@ -21,43 +23,49 @@ class BoardPage extends StatefulWidget {
 class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  late PostService _postService;
+
   String selectedRegion = '전체';
   String selectedGenre = '전체';
 
   final int postsPerPage = 5;
 
   final List<String> regions = [
-    '전체', '강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '지역 미정'
+    '전체', '강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '온라인'
   ];
 
   final List<String> genres = [
-    '전체', '국악', '기타', '무용/발레', '뮤지컬/오페라', '연극', '음악/콘서트', '전시'
+    '전체', '국악', '기타', '무용/발레', '뮤지컬/오페라', '연극', '음악/콘서트', '전시', '행사/축제', '교육/체험'
   ];
 
   int currentPage = 1;
 
-  // 💡 [변경] 실제 데이터를 저장할 리스트
   List<Post> posts = [];
-  bool isLoading = false; // 로딩 상태 관리
+  bool isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
 
-    // 탭 변경 시 데이터를 다시 불러오기 위한 리스너
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
-        // 탭이 변경되면 페이지를 1로 초기화하고 데이터 새로고침
         setState(() {
           currentPage = 1;
         });
         _fetchPosts();
       }
     });
+  }
 
-    // 초기 데이터 로드
-    _fetchPosts();
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _postService = context.read<PostService>();
+
+    if (posts.isEmpty && !isLoading) {
+      _fetchPosts();
+    }
   }
 
   @override
@@ -66,47 +74,39 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     super.dispose();
   }
 
-  // 💡 [추가] API 호출 함수
   Future<void> _fetchPosts() async {
+    if (!mounted || _postService == null) return;
+
     setState(() {
       isLoading = true;
     });
 
-    // 현재 탭에 따라 category 결정
     final String category = _tabController.index == 0 ? 'review' : 'matching';
 
-    // 기존 디자인의 로컬 필터링/페이지네이션을 유지하기 위해
-    // 한 번에 넉넉한 양(limit=100)을 가져옵니다.
-    // (서버 API가 총 개수 정보를 안 주기 때문에 이 방식이 UI 유지에 유리함)
-    final url = 'https://dartroll-nodejs.onrender.com/api/post/getAll?page=0&limit=100&tap=$category';
-
-    log('🔍 [API_REQUEST] Fetching posts: $url', name: 'BOARD_PAGE');
+    log('🔍 [CALL_SERVICE] Fetching posts for category: $category', name: 'BOARD_PAGE');
 
     try {
-      final response = await http.get(Uri.parse(url));
+      // ⭐ 변경 예정: 서버 페이징 및 필터링 적용 시, _postService.fetchPosts(category, currentPage, selectedRegion, selectedGenre) 형태로 변경해야 합니다.
+      final fetchedPosts = await _postService.fetchPosts(category);
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final List<dynamic> jsonList = jsonDecode(response.body);
+      setState(() {
+        posts = fetchedPosts;
+        isLoading = false;
+      });
 
-        log('✅ [API_RESPONSE] Count: ${jsonList.length}', name: 'BOARD_PAGE');
-
-        setState(() {
-          posts = jsonList.map((json) {
-            // 서버 응답에 category 정보가 없을 수 있으므로 현재 탭 정보를 주입
-            return Post.fromApiJson(json as Map<String, dynamic>, category: category);
-          }).toList();
-
-          isLoading = false;
-        });
-      } else {
-        log('🚨 [API_ERROR] Status: ${response.statusCode}', name: 'BOARD_PAGE');
-        setState(() {
-          posts = [];
-          isLoading = false;
-        });
+    } on DioException catch (e) {
+      log('🚨 [DIO_ERROR] Failed to fetch posts: ${e.message}', name: 'BOARD_PAGE');
+      if(mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('게시물 로드 실패: ${e.message}')),
+        );
       }
+      setState(() {
+        posts = [];
+        isLoading = false;
+      });
     } catch (e) {
-      log('🚨 [API_EXCEPTION] $e', name: 'BOARD_PAGE');
+      log('🚨 [SERVICE_ERROR] Failed to fetch posts: $e', name: 'BOARD_PAGE');
       setState(() {
         posts = [];
         isLoading = false;
@@ -114,20 +114,19 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     }
   }
 
-  // 기존 로컬 필터링 로직 유지 (받아온 API 데이터를 기준으로 필터링)
+  // ----------------------------------------------------
+  // [유지] 기존 로컬 필터링, 페이지네이션, 지역/장르 선택, UI 구성 로직은 그대로 유지
+  // ----------------------------------------------------
+
   List<Post> _filteredPosts(String category) {
-    // 이미 API에서 category(tap)별로 받아왔지만, 안전을 위해 한 번 더 검사하거나
-    // 현재 탭의 데이터만 보여주도록 함 (posts 리스트는 현재 탭 데이터로 갱신됨)
     final filtered = posts.where((post) {
       final regionMatch =
           selectedRegion == '전체' || post.region == selectedRegion;
       final genreMatch = selectedGenre == '전체' || post.genre == selectedGenre;
 
-      // API에서 이미 해당 카테고리만 가져왔으므로 post.category 체크는 사실상 pass임
       return post.category == category && regionMatch && genreMatch;
     }).toList();
 
-    // 최신순 정렬 (date 기준)
     filtered.sort((a, b) => b.date.compareTo(a.date));
 
     final startIndex = (currentPage - 1) * postsPerPage;
@@ -203,8 +202,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
   }
 
   void _onWritePost() async {
-    // 💡 [변경] 글쓰기 완료 후 돌아왔을 때 API 재호출로 갱신
-    // 반환값을 받지 않고(void), 돌아오면 무조건 갱신
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -223,7 +220,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.lightBlue,
+        backgroundColor: Colors.blue[200],
         title: const Text(
           '게시판',
           style: TextStyle(
@@ -235,7 +232,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
         centerTitle: true,
         elevation: 0,
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
+          preferredSize: const Size.fromHeight(kToolbarHeight-8),
           child: Container(
             color: Colors.white,
             child: TabBar(
@@ -316,8 +313,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
           ),
           Expanded(
             child: Container(
-              color: Colors.grey[200],
-              // 💡 [변경] 로딩 중이면 인디케이터 표시
+              color: Colors.blue[50],
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : TabBarView(
@@ -347,8 +343,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
 
   Widget _buildPostList(String category) {
     final posts = _filteredPosts(category);
-    // 💡 [API 참고] 실제 서버 페이징을 쓰지 않고, 가져온 데이터를 로컬에서 페이징 처리하여
-    // 기존의 페이지네이션 UI (1, 2, 3 숫자 버튼)를 그대로 유지함
     final totalPages = (_getFilteredCount(category) / postsPerPage).ceil();
 
     final bottomPadding = MediaQuery.of(context).padding.bottom + 72.0;
@@ -359,37 +353,58 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
 
     return ListView.builder(
       padding: EdgeInsets.fromLTRB(8, 8, 8, bottomPadding),
-      // posts.length + 1은 페이지네이션 버튼 공간 확보
       itemCount: posts.length + 1,
       itemBuilder: (context, index) {
         if (index == posts.length) {
-          // 페이지네이션 버튼
-          if (totalPages <= 1) return const SizedBox.shrink(); // 1페이지 뿐이면 숨김
+          if (totalPages <= 1) return const SizedBox.shrink();
 
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                totalPages,
-                    (i) {
-                  final page = i + 1;
-                  return TextButton(
-                    onPressed: () {
-                      setState(() {
-                        currentPage = page;
-                      });
+            child: Center( // 👈 중앙 정렬을 위해 Center 위젯 추가
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center, // Row 내부 중앙 정렬 (이 부분은 SingleChildScrollView 때문에 완벽히 작동하지 않으므로, 외부 Center가 중요합니다.)
+                  children: List.generate(
+                    totalPages,
+                        (i) {
+                      final page = i + 1;
+                      final isSelected = page == currentPage;
+
+                      return Container( // 디자인 적용을 위해 Container 사용
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        decoration: BoxDecoration(
+                          color: isSelected ? Colors.blue : Colors.white, // 선택된 페이지는 파란색, 나머지는 흰색
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSelected ? Colors.blue : Colors.white,
+                            width: 1,
+                          ),
+                        ),
+                        child: InkWell( // TextButton 대신 InkWell을 사용하여 영역 전체를 터치 가능하게 합니다.
+                          onTap: () {
+                            setState(() {
+                              currentPage = page;
+                            });
+                            // ⭐ 페이징을 서버로 전환하면 여기에 _fetchPosts()를 호출해야 합니다.
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            child: Text(
+                              '$page',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold, // 굵은 글자
+                                color: isSelected ? Colors.white : Colors.black, // 선택된 페이지는 흰색 글씨, 나머지는 검은색
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
                     },
-                    child: Text(
-                      '$page',
-                      style: TextStyle(
-                        fontWeight:
-                        page == currentPage ? FontWeight.bold : FontWeight.normal,
-                        color: page == currentPage ? Colors.blue : Colors.black,
-                      ),
-                    ),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
           );
@@ -397,11 +412,31 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
 
         final post = posts[index];
         return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => PostDetailPage(post: post)),
-            );
+          onTap: () async {
+            try {
+              // 1. PostService의 increaseViewCount 함수 호출
+              await _postService.increaseViewCount(post.id, post.category);
+
+              // 2. 상세 페이지로 이동하며 복귀를 기다림 (await)
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => PostDetailPage(post: post)),
+              );
+
+              // 3. ⭐ [수정된 핵심 로직] 상세 페이지에서 돌아왔을 때 목록을 새로고침하여
+              //    변경된 조회수, 좋아요, 댓글 상태를 반영합니다.
+              _fetchPosts();
+
+            } on DioException catch (e) {
+              log('🚨 [DIO_ERROR] Failed to increase view count: ${e.message}', name: 'BOARD_PAGE_VIEW');
+              if(mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('조회수 증가 실패: ${e.message}')),
+                );
+              }
+            } catch (e) {
+              log('🚨 [SERVICE_ERROR] Failed to increase view count: $e', name: 'BOARD_PAGE_VIEW');
+            }
           },
           child: Container(
             margin: const EdgeInsets.symmetric(vertical: 4),
@@ -417,7 +452,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 태그 (지역/장르) - 서버 데이터 반영
                     Row(
                       children: [
                         Container(
@@ -446,7 +480,6 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
                       ],
                     ),
                     const SizedBox(height: 6),
-                    // 제목
                     Text(
                       post.title,
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -454,16 +487,15 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 6),
-                    // 하단 정보 (임의 값 포함)
                     Row(
                       children: [
-                        Text('작성자: ${post.author}'), // 임의값 (익명)
+                        Text('작성자: ${post.author}'),
                         const SizedBox(width: 12),
                         Row(
                           children: [
                             const Icon(Icons.remove_red_eye, size: 16),
                             const SizedBox(width: 4),
-                            Text('${post.views}'), // 임의값 (0)
+                            Text('${post.views}'),
                           ],
                         ),
                         const SizedBox(width: 12),
@@ -471,7 +503,7 @@ class _BoardPageState extends State<BoardPage> with SingleTickerProviderStateMix
                           children: [
                             const Icon(Icons.thumb_up, size: 16),
                             const SizedBox(width: 4),
-                            Text('${post.likes}'), // 임의값 (0)
+                            Text('${post.likes}'),
                           ],
                         ),
                         const Spacer(),

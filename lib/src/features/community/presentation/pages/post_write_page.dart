@@ -1,13 +1,19 @@
-// post_write_page.dart
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer';
+// 💡 [추가] Provider와 DioException 사용을 위한 임포트
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+// 💡 [임포트 유지] 서비스 계층
+import 'package:cultureyo/src/features/community/service/post_service.dart';
+import 'package:cultureyo/src/features/community/service/performance_service.dart';
+
 // 이 경로는 사용자님의 프로젝트 구조에 맞게 조정되었을 수 있습니다.
 import 'package:cultureyo/src/features/community/data/post_model.dart';
 import 'package:cultureyo/src/features/community/data/performance_detail_model.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 
 class Performance {
   final String id;
@@ -41,21 +47,57 @@ class _PostWritePageState extends State<PostWritePage> {
   Performance? selectedPerformance;
   PerformanceDetail? selectedPerformanceDetail;
 
+  // 🌟 [추가] 중복 제출 방지 상태 변수
+  bool _isSubmitting = false;
+
   final List<String> regions = [
-    '강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '지역 미정'
+    '강원', '경기', '경남', '경북', '광주', '대구', '대전', '부산', '서울', '세종', '울산', '인천', '온라인'
   ];
 
+  // 장르 항목에 '행사/축제'와 '교육/체험' 추가
   final List<String> genres = [
-    '국악', '기타', '무용/발레', '뮤지컬/오페라', '연극', '음악/콘서트', '전시'
+    '국악', '기타', '무용/발레', '뮤지컬/오페라', '연극', '음악/콘서트', '전시',
+    '행사/축제',
+    '교육/체험'
   ];
 
   Timer? _debounce;
 
-  // 💡 [수정됨] 게시물 작성 API 호출 로직: Post 객체 재구성 및 반환 로직 제거
+  // 💡 [변경] 서비스 인스턴스를 Provider로 주입받을 변수로 선언
+  late PostService _postService;
+  late PerformanceService _performanceService;
+
+  // 💡 [추가] Service 인스턴스를 context를 통해 가져오는 메서드
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // context.read를 사용하여 Service 인스턴스를 가져옵니다.
+    _postService = context.read<PostService>();
+    _performanceService = context.read<PerformanceService>();
+  }
+
+  // 선택된 장르에 따라 idxName을 결정하는 헬퍼 함수
+  String _getIdxName(String selectedGenre) {
+    if (selectedGenre == '행사/축제') {
+      return 'festival';
+    } else if (selectedGenre == '교육/체험') {
+      return 'experience';
+    } else {
+      // 그 외의 모든 기존 장르는 'performance' 유지
+      return 'performance';
+    }
+  }
+
+
+  // 게시물 작성 API 호출 로직 (PostService 사용)
   Future<void> _createPostApi() async {
-    if (selectedPerformanceDetail == null) {
+    // 🌟 [수정] 이미 제출 중이면 함수 종료 (더블 클릭 방지)
+    if (_isSubmitting) return;
+
+    // 1. 필수 데이터 확인
+    if (selectedPerformanceDetail == null || selectedPerformance == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('공연 상세 정보가 준비되지 않았습니다.')),
+        const SnackBar(content: Text('공연 정보가 올바르게 선택되지 않았습니다.')),
       );
       return;
     }
@@ -63,86 +105,77 @@ class _PostWritePageState extends State<PostWritePage> {
     final PerformanceDetail detail = selectedPerformanceDetail!;
     final String performanceUrl = detail.url ?? '';
 
-    // 1. 서버로 전송할 요청 본문
+    // 2. Prefix에 따라 최종 장르값 결정
+    String finalGenre = detail.genre ?? '장르 미정';
+    final String prefix = selectedPerformance!.idxName; // festival, experience, performance
+
+    if (prefix == 'festival') {
+      finalGenre = '행사/축제';
+    } else if (prefix == 'experience') {
+      finalGenre = '교육/체험';
+    }
+
+    // 4. 서버로 전송할 요청 본문
     final Map<String, dynamic> requestBody = {
       "title": titleController.text,
-      "area": detail.area ?? '지역 미정',
-      "genre": detail.genre ?? '장르 미정',
-      "content": contentController.text,
-      "tap": widget.category,
+      "area": detail.area ?? '온라인',
+      "genre": finalGenre, // 최종 결정된 장르 값 사용
+      "content": contentController.text, // content -> context로 필드명 변경 (원래 로직 유지)
       "url": performanceUrl,
+      "tap": widget.category,
     };
 
-    log('▶️ [POST_REQUEST] 요청 Body: ${jsonEncode(requestBody)}', name: 'API_CHECK');
+    // 🌟 [추가] 제출 시작: 상태 변경 및 UI 업데이트 (버튼 비활성화)
+    setState(() {
+      _isSubmitting = true;
+    });
 
     try {
-      final response = await http.post(
-        // API 주소 반영: post/upload
-        Uri.parse('https://dartroll-nodejs.onrender.com/api/post/upload'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(requestBody),
-      ).timeout(const Duration(seconds: 15));
+      // 💡 [변경] PostService의 createPost 함수 호출
+      final String? postId = await _postService.createPost(requestBody);
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        // [게시물 작성 성공]
-        try {
-          final Map<String, dynamic> responseData = jsonDecode(response.body);
-
-          // 2. 서버 응답 로깅 (디버깅 목적)
-          log('✅ [POST_SUCCESS_RESPONSE] 응답 데이터: ${responseData}', name: 'API_CHECK');
-
-          // 3. 서버 응답에서 ID 추출 (id로 변경됨)
-          final String? postId = responseData['id']?.toString();
-
-          if (postId == null || postId.isEmpty) {
-            throw FormatException('서버가 게시물 고유 ID를 반환하지 않았습니다.');
-          }
-
-          // ⚠️ [변경됨]: 로컬에서 Post 객체 구성 및 반환 로직 제거됨.
-
+      if (mounted) {
+        if (postId != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('게시물이 성공적으로 작성되었습니다.')),
           );
-
-          // 🚨 [핵심 수정]: 새 Post 객체 반환 없이, 단순 복귀만 수행
           Navigator.pop(context);
-
-        } on FormatException catch (e) {
-          // ID 누락 또는 JSON 디코딩 실패 처리
-          log('🚨 [응답 파싱 오류] Exception: ${e.message}', name: 'POST_WRITE');
+        } else {
+          // 서버에서 null을 반환한 경우 (일반적이지 않은 응답)
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('게시물 작성 실패: ${e.message}')),
-          );
-        } catch (e) {
-          // 기타 런타임 오류 (예: 타입 불일치, 모델 파싱 오류)
-          log('🚨 [게시물 작성 중 알 수 없는 파싱 오류] Exception: $e', name: 'POST_WRITE');
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('게시물 작성에 실패했습니다 (데이터 구조 오류).')),
+            const SnackBar(content: Text('게시물 작성 실패: 서버 응답 오류가 발생했습니다.')),
           );
         }
-
-      } else {
-        // [API 호출 실패] (4xx 또는 5xx 오류)
-        log('🚨 [게시물 작성 실패] Status: ${response.statusCode}, Body: ${response.body}', name: 'POST_WRITE');
+      }
+    } on DioException catch (e) { // 💡 [추가] DioException 처리
+      log('🚨 [게시물 작성 Dio 에러] ${e.message}', name: 'POST_WRITE');
+      if (mounted) {
+        final errorMessage = e.response?.data['message']?.toString() ?? e.message;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('게시물 작성에 실패했습니다 (서버 오류: ${response.statusCode})')),
+          SnackBar(content: Text('게시물 작성 중 오류가 발생했습니다: $errorMessage')),
         );
       }
-    } on TimeoutException {
-      // [타임아웃 에러 처리]
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('게시물 작성 요청 시간이 초과되었습니다. 서버 상태를 확인해주세요.')),
-      );
     } catch (e) {
-      // [네트워크 오류 또는 기타 예외 처리]
-      log('🚨 [게시물 작성 에러] Exception: $e', name: 'POST_WRITE');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('게시물 작성 중 네트워크 연결 오류가 발생했습니다.')),
-      );
+      // PostService에서 throw된 일반 Exception 처리
+      log('🚨 [게시물 작성 일반 에러] Exception: $e', name: 'POST_WRITE');
+      if (mounted) {
+        // 간결한 오류 메시지 추출 (기존 로직 유지)
+        final errorMessage = e.toString().contains(':') ? e.toString().split(':')[1].trim() : '네트워크 오류';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('게시물 작성 중 오류가 발생했습니다: $errorMessage')),
+        );
+      }
+    } finally {
+      // 🌟 [추가] 작업 완료: 상태 변경 및 UI 업데이트 (성공/실패 무관, 버튼 재활성화)
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 
-  // --- (이하 나머지 코드는 동일) ---
+  // --- HTML 디코딩 함수 (유지) ---
   void _onSubmit() {
     if (titleController.text.isEmpty ||
         contentController.text.isEmpty ||
@@ -153,9 +186,11 @@ class _PostWritePageState extends State<PostWritePage> {
       );
       return;
     }
-    _createPostApi();
+    // 🌟 [수정] 제출 중이 아닐 때만 API 호출 허용
+    if (!_isSubmitting) {
+      _createPostApi();
+    }
   }
-  // --- HTML 디코딩 함수 (이하 동일) ---
   String htmlDecode(String input) {
     return input
         .replaceAll('&amp;', '&')
@@ -166,7 +201,7 @@ class _PostWritePageState extends State<PostWritePage> {
         .replaceAll('&nbsp;', ' ');
   }
 
-  // --- 공연 선택 modal (이하 동일) ---
+  // 💡 [수정] 공연 선택 modal 내 API 호출 로직 (PerformanceService 사용)
   Future<void> _showPerformanceModal() async {
     String? modalRegion;
     String? modalGenre;
@@ -187,54 +222,43 @@ class _PostWritePageState extends State<PostWritePage> {
         errorMessage = null;
       });
 
-      final body = {
-        'idxName': 'performance',
-        'area': modalRegion == '지역 미정' ? 'empty' : modalRegion,
-        'genre': modalGenre,
-      };
-
-      log('🔍 [API_REQUEST] URL: https://dartroll-nodejs.onrender.com/api/getSimple', name: 'PERFORMANCE_FETCH');
-      log('🔍 [API_REQUEST] Body: ${jsonEncode(body)}', name: 'PERFORMANCE_FETCH');
+      final String currentIdxName = _getIdxName(modalGenre!);
 
       try {
-        final response = await http.post(
-          Uri.parse('https://dartroll-nodejs.onrender.com/api/getSimple'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
-        ).timeout(const Duration(seconds: 15));
+        // 💡 [변경] PerformanceService를 사용하여 목록 조회
+        final List<Map<String, dynamic>> results = await _performanceService.fetchSimplePerformances(
+          idxName: currentIdxName,
+          area: modalRegion!,
+          genre: modalGenre!,
+        );
 
-        log('✅ [API_RESPONSE] Status: ${response.statusCode}', name: 'PERFORMANCE_FETCH');
-        log('✅ [API_RESPONSE] Body Snippet: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}...', name: 'PERFORMANCE_FETCH');
+        // title 디코딩 및 리스트 업데이트
+        performanceList = results
+            .map<Map<String, dynamic>>((item) => {
+          'id': item['id'].toString(), // 'prefix:number' 형태를 유지
+          'title': htmlDecode(item['title']?.toString() ?? '제목 없음')
+        }).toList();
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> jsonData = jsonDecode(response.body);
-          final List<dynamic> results = jsonData['results'] ?? [];
-          performanceList = results
-              .map<Map<String, dynamic>>((item) => {
-            'id': item['id'].toString(),
-            'title': htmlDecode(item['title'].toString())
-          })
-              .toList();
-
-          if (performanceList.isEmpty) {
-            errorMessage = "해당 조건에 맞는 공연이 없습니다.";
-          }
-
-          if (modalSearch.isNotEmpty) {
-            performanceList = performanceList
-                .where((item) => item['title'].contains(modalSearch))
-                .toList();
-          }
-        } else {
-          performanceList = [];
-          errorMessage = "서버 오류 (Status: ${response.statusCode})";
+        if (performanceList.isEmpty) {
+          errorMessage = "해당 조건에 맞는 공연이 없습니다.";
         }
-      } on TimeoutException {
+
+        // 검색 필터링 로직은 UI 계층(Modal)에서 처리 (로직 유지)
+        if (modalSearch.isNotEmpty) {
+          performanceList = performanceList
+              .where((item) => item['title'].contains(modalSearch))
+              .toList();
+        }
+
+      } on DioException catch (e) { // 💡 [추가] DioException 처리
         performanceList = [];
-        errorMessage = "서버 응답 시간 초과";
+        errorMessage = "공연 목록 조회 오류: ${e.message}";
+        log('🚨 [API_ERROR] DioException: $e', name: 'PERFORMANCE_FETCH');
       } catch (e) {
         performanceList = [];
-        errorMessage = "네트워크 오류 또는 서버 접속 오류";
+        // Service에서 발생한 Exception 메시지를 사용 (기존 로직 유지)
+        final errorDetail = e.toString().contains(':') ? e.toString().split(':')[1].trim() : '네트워크 오류';
+        errorMessage = "공연 목록 조회 오류: $errorDetail";
         log('🚨 [API_ERROR] Exception: $e', name: 'PERFORMANCE_FETCH');
       } finally {
         if (!mounted) return;
@@ -269,7 +293,7 @@ class _PostWritePageState extends State<PostWritePage> {
                   children: [
                     // --- 상단 헤더 ---
                     Container(
-                      color: Colors.lightBlue,
+                      color: Colors.blue[200],
                       padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
                       child: Column(
                         children: [
@@ -295,6 +319,7 @@ class _PostWritePageState extends State<PostWritePage> {
                                       setModalState(() {
                                         modalRegion = region;
                                       });
+                                      // 💡 [수정] 지역/장르 선택 후 검색어는 유지하고 목록만 새로고침
                                       fetchPerformances();
                                     }
                                   },
@@ -309,7 +334,13 @@ class _PostWritePageState extends State<PostWritePage> {
                                     mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(modalRegion ?? '지역 선택'),
+                                      // 💡 [UI 수정] Flexible로 감싸서 텍스트 오버플로우 방지
+                                      Flexible(
+                                        child: Text(
+                                          modalRegion ?? '지역 선택',
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
                                       const Icon(Icons.arrow_drop_down),
                                     ],
                                   ),
@@ -323,7 +354,7 @@ class _PostWritePageState extends State<PostWritePage> {
                                       context: context,
                                       builder: (context) => SimpleDialog(
                                         title: const Text('장르 선택'),
-                                        children: genres
+                                        children: genres // 💡 확장된 genres 리스트 사용
                                             .map((g) => SimpleDialogOption(
                                           onPressed: () =>
                                               Navigator.pop(context, g),
@@ -336,6 +367,7 @@ class _PostWritePageState extends State<PostWritePage> {
                                       setModalState(() {
                                         modalGenre = genre;
                                       });
+                                      // 💡 [수정] 지역/장르 선택 후 검색어는 유지하고 목록만 새로고침
                                       fetchPerformances();
                                     }
                                   },
@@ -350,7 +382,13 @@ class _PostWritePageState extends State<PostWritePage> {
                                     mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(modalGenre ?? '장르 선택'),
+                                      // 💡 [UI 수정] Flexible로 감싸서 텍스트 오버플로우 방지
+                                      Flexible(
+                                        child: Text(
+                                          modalGenre ?? '장르 선택',
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
                                       const Icon(Icons.arrow_drop_down),
                                     ],
                                   ),
@@ -373,6 +411,7 @@ class _PostWritePageState extends State<PostWritePage> {
                                   _debounce!.cancel();
                                 _debounce = Timer(
                                     const Duration(milliseconds: 400), () {
+                                  // 💡 [수정] 디바운스 후 목록 새로고침
                                   fetchPerformances();
                                 });
                               },
@@ -486,29 +525,33 @@ class _PostWritePageState extends State<PostWritePage> {
 
       // ▼▼▼▼▼ 상세 정보 API 호출 및 저장 ▼▼▼▼▼
       try {
-        final detailBody = {
-          'idxName': idxName,
-          'contentId': contentId,
-        };
-
-        final detailResponse = await http.post(
-          Uri.parse('https://dartroll-nodejs.onrender.com/api/getEventDetail'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(detailBody),
+        // 💡 [변경] PerformanceService를 사용하여 상세 정보 조회
+        final detail = await _performanceService.fetchEventDetail(
+          idxName: idxName,
+          contentId: contentId,
         );
 
-        if (detailResponse.statusCode == 200) {
-          final Map<String, dynamic> jsonDetail = jsonDecode(detailResponse.body);
-          final detail = PerformanceDetail.fromJson(jsonDetail);
+        if (mounted) {
           setState(() {
             selectedPerformanceDetail = detail; // 상세 모델 저장
           });
-        } else {
-          log('🔍 [API_CHECK] 상세 정보 호출 실패: ${detailResponse.statusCode}', name: 'API_CHECK');
         }
-
+      } on DioException catch (e) { // 💡 [추가] DioException 처리
+        log('API 호출 에러: DioException - ${e.message}', name: 'API_CHECK');
+        if (mounted) {
+          final errorDetail = e.response?.data['message']?.toString() ?? e.message;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('공연 상세 정보 조회 오류: $errorDetail')),
+          );
+        }
       } catch (e) {
         log('API 호출 에러: $e', name: 'API_CHECK');
+        if (mounted) {
+          final errorDetail = e.toString().contains(':') ? e.toString().split(':')[1].trim() : '네트워크 오류';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('공연 상세 정보 조회 오류: $errorDetail')),
+          );
+        }
       }
       // ▲▲▲▲▲ ▲▲▲▲▲
 
@@ -524,7 +567,7 @@ class _PostWritePageState extends State<PostWritePage> {
     }
   }
 
-  // --- 공연 상세 정보 카드 UI 위젯 (X 버튼 제거) ---
+  // --- 공연 상세 정보 카드 UI 위젯 (유지) ---
   Widget _buildPerformanceCard() {
     final detail = selectedPerformanceDetail;
 
@@ -622,7 +665,7 @@ class _PostWritePageState extends State<PostWritePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.lightBlue,
+        backgroundColor: Colors.blue[200],
         title: const Text(
           '게시글 작성',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -729,28 +772,25 @@ class _PostWritePageState extends State<PostWritePage> {
             ),
           ),
           Positioned(
-            left: 12,
-            bottom: 12,
-            child: ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.image, color: Colors.black),
-              label: const Text('사진 업로드',
-                  style: TextStyle(color: Colors.black)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-              ),
-            ),
-          ),
-          Positioned(
             right: 12,
             bottom: 12,
             child: ElevatedButton(
-              onPressed: _onSubmit,
-              child: const Text('완료', style: TextStyle(color: Colors.black)),
+              // 🌟 [수정] _isSubmitting이 true일 때 onPressed를 null로 설정하여 버튼 비활성화
+              onPressed: _isSubmitting ? null : _onSubmit,
+              child: _isSubmitting
+                  ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                ),
+              )
+                  : const Text('완료', style: TextStyle(color: Colors.black)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
+                // 🌟 [추가] 비활성화된 상태의 색상 정의
+                disabledBackgroundColor: Colors.grey[300],
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
               ),

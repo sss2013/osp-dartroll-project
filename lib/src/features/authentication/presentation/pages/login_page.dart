@@ -1,10 +1,11 @@
 import 'package:cultureyo/src/features/authentication/domain/usecases/auth_manager.dart';
-import 'package:cultureyo/src/features/authentication/presentation/pages/user_info.dart';
+import 'package:cultureyo/src/features/profile/usecases/name_input_page.dart';
+import 'package:cultureyo/src/features/profile/usecases/user_info.dart';
 import 'package:cultureyo/src/features/home.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum Auth { naver, kakao }
 
@@ -19,63 +20,52 @@ class _LoginPageState extends State<LoginPage> {
   bool _loading = false;
 
   Future<void> _handleLoginResult(
-      BuildContext context, AuthManager authManager, dynamic result, Auth provider) async {
-    late final bool ok;
+      BuildContext context, AuthManager authManager, bool success) async {
     if (!mounted) return;
-    if (result == null) {
-      setState(() => _loading = false);
+    setState(() => _loading = false);
+
+    if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인이 취소되었거나 실패했습니다.')),
-      );
+          const SnackBar(content: Text('서버 로그인 처리에 실패했습니다. 다시 시도해주세요')));
       return;
     }
 
-    if (provider == Auth.kakao) {
-      ok = await authManager.kakaoService.sendTokenToServer(result);
-    } else {
-      ok = await authManager.naverService.sendTokenToServer(result);
-    }
-
-    if (ok) {
+    try {
       final inputResult = await authManager.checkInput();
-      setState(() => _loading = false);
-      if (inputResult != true) {
-        if (!mounted) return ;
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => NameInputPage()));
-      } else {
-        if (!mounted) return ;
-        Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (_) => MainScreen()));
-      }
-    } else {
-      setState(() => _loading = false);
+      if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('서버에서 로그인 처리에 실패했습니다. 나중에 다시 시도해주세요')));
+      if (inputResult) {
+        Navigator.pushAndRemoveUntil(context,
+            MaterialPageRoute(builder: (_) => MainScreen()), (route) => false);
+      } else {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isFirstChatDone', false);
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => const NameInputPage()));
+      }
+    } catch (e) {
+      if (kDebugMode) print('checkInput 중 에러 : $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('처리 중 오류가 발생했습니다')),
+      );
     }
   }
 
-  void _onPressed(AuthManager authManager, Auth provider) async {
+  Future<void> _onPressed(AuthManager authManager, Auth provider) async {
+    if (_loading) return;
     setState(() => _loading = true);
 
-    dynamic result;
     try {
+      bool success = false;
       if (provider == Auth.kakao) {
-        result = await authManager.kakaoService.login();
-        await _handleLoginResult(context, authManager, result, Auth.kakao);
+        success = await authManager.signInWithKakao();
       } else {
-        result = await authManager.naverService.login();
-        await _handleLoginResult(context, authManager, result, Auth.naver);
+        success = await authManager.signInWithNaver();
       }
-
+      await _handleLoginResult(context, authManager, success);
     } catch (e) {
-      if (kDebugMode) {
-        print('로그인 처리중 에러 발생, $e');
-      }
-      setState(() {
-        _loading = false;
-      });
+      if (kDebugMode) print('로그인 중 에러: $e');
     }
   }
 

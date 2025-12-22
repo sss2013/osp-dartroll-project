@@ -30,12 +30,12 @@
 
 사용자는 게시물 상세 페이지의 작성자 아이콘을 통해 다른 사용자의 프로필에 접근, 1:1 채팅 기능을 사용할 수 있습니다.
 
-- **회원 탈퇴**
+- **계정 탈퇴**
 <img src = "https://github.com/user-attachments/assets/e2010156-97f0-4d87-8d8e-088e9a6f5ebc" width="200" height="400">
 <img src = "https://github.com/user-attachments/assets/01e6d4bb-0bbd-4600-95ca-cfc74c741649" width="200" height="400">
 <img src = "https://github.com/user-attachments/assets/7aef78e6-2d0a-4d37-9aaa-782826fc0989" width="200" height="400">
 
-사용자는 더 이상 서비스 이용을 원하지 않을 경우 하단바의 내 정보 탭 내부의 회원 탈퇴 기능을 통해 안전하게 회원 정보를 삭제할 수 있습니다. 
+사용자는 더 이상 서비스 이용을 원하지 않을 경우 하단바의 내 정보 탭 내부의 계정 탈퇴 기능을 통해 안전하게 회원 정보를 삭제할 수 있습니다. 
 
 ## ✍ 개발 환경
 ### Frontend

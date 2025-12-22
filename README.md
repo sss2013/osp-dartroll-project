@@ -6,7 +6,7 @@
 
 본 프로젝트는 Flutter를 활용하였으며 **Android와 iOS를 동시에 지원**합니다.
 
-- 시연 영상 URL:
+- 시연 영상 URL: https://youtube.com/shorts/qoEbgW88txo?si=YOpc8mxHzA65wYfR
   
 ## 🤖 주요 기능
 - **소셜 로그인**

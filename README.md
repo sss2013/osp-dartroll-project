@@ -51,7 +51,7 @@
 - **Supabase** : 사용자 정보 관리
 - **MongoDB** : 게시글 및 채팅 데이터 관리
 
-### :family: 협업 Tool
+## :family: 협업 Tool
 - Discord, Notion, KaKaoTalk, Github
   
 
